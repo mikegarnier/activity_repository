@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Free Body Diagram Practice - Level 1</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 1rem;
+    }
+    #diagram {
+      position: relative;
+      width: 400px;
+      height: 300px;
+      margin: 1rem auto;
+      background-color: #f5f5f5;
+      border: 1px solid #ccc;
+    }
+    .box {
+      position: absolute;
+      width: 55px;
+      height: 55px;
+      background: white;
+      border: 3px solid black;
+      top: 120px;
+      left: 170px;
+    }
+    .arrow-line {
+      position: absolute;
+      background: red;
+    }
+    .arrow-head {
+      position: absolute;
+      width: 0;
+      height: 0;
+      border: solid red;
+    }
+    .label {
+      position: absolute;
+      font-size: 12px;
+      background: white;
+      padding: 1px 4px;
+      border: 1px solid #aaa;
+      border-radius: 4px;
+    }
+    .controls {
+      text-align: center;
+      margin-top: 1rem;
+    }
+    button, select {
+      margin: 0.3rem;
+    }
+  </style>
+</head>
+<body>
+  <div style="max-width: 800px; margin: 0 auto; text-align: center;">
+  <h1 id="level-title">Free Body Diagram Practice - Level 1</h1>
+  <div style="text-align: left; max-width: 600px; margin: 1rem auto; padding: 1rem; border: 2px solid #000; background-color: #f0f0f0; border-radius: 8px;">
+    <p><strong>Ask these questions in this order first:</strong></p>
+    <ol>
+      <li>Does Gravity apply?  Add it.</li>
+      <li>Does the Normal Force apply?  Add it.</li>
+      <li>What other forces apply? Add them.</li>
+      <li>Which direction (if any) is it accelerating?  Make that arrow the biggest (if needed).</li>
+    </ol>
+  </div>
+  <p id="scenario-text" style="font-size: 1.6rem;">Click a direction to place an arrow. Then use the dropdown to label the force. Choose a size to represent balanced or unbalanced forces.</p>
+
+  <div id="diagram">
+    <div class="box" id="box"></div>
+    <div style="position: absolute; bottom: 5px; left: 5px; font-size: 14px;">
+      <label for="balance-select"><strong>Balanced or Unbalanced?</strong></label>
+      <select id="balance-select">
+        <option value="">-- Select --</option>
+        <option value="balanced">Balanced</option>
+        <option value="unbalanced">Unbalanced</option>
+      </select>
+    </div>
+  </div>
+
+  
+
+<div class="controls">
+    Add arrow:
+    <button onclick="addArrow('up')">↑</button>
+    <button onclick="addArrow('down')">↓</button>
+    <button onclick="addArrow('left')">←</button>
+    <button onclick="addArrow('right')">→</button><br>
+   
+
+    Arrow size:
+    <label><input type="radio" name="size" value="30" checked> Small</label>
+    <label><input type="radio" name="size" value="60"> Large</label>
+    <br>
+    <small style="display: block; margin-top: 0.5rem; font-style: italic;">Click an arrow button a second time to remove it.</small>
+    <button onclick="resetDiagram()">Reset</button>
+  </div>
+
+<div style="text-align:center; margin-top: 1rem;">
+  <button onclick="checkAnswer()">Check Answer</button>
+</div>
+
+<div style="text-align:center; margin-top: 1rem;">
+  <button onclick="nextLevel()">Next Level</button>
+  <label for="level-select"> or jump to: </label>
+  <select id="level-select" onchange="selectLevel(this.value)">
+    <option value="0">Level 1</option>
+    <option value="1">Level 2</option>
+    <option value="2">Level 3</option>
+    <option value="3">Level 4</option>
+    <option value="4">Level 5</option>
+    <option value="5">Level 6</option>
+    <option value="6">Level 7</option>
+    <option value="7">Level 8</option>
+    <option value="8">Level 9</option>
+    <option value="9">Level 10</option>
+    <option value="10">Level 11</option>
+    <option value="11">Level 12</option>
+    <option value="12">Level 13</option>
+    <option value="13">Level 14</option>
+    <option value="14">Level 15</option>
+    <option value="15">Level 16</option>
+    <option value="16">Level 17</option>
+    <option value="17">Level 18</option>
+    <option value="18">Level 19</option>
+    <option value="19">Level 20</option>
+  </select>
+</div>
+<div id="feedback" style="text-align:center; margin-top: 1rem;"></div>
+
+  <script>
+    const diagram = document.getElementById("diagram");
+
+    function addArrow(direction) {
+      const existingArrow = diagram.querySelector(`.arrow-line[data-direction='${direction}']`);
+      if (existingArrow) {
+        // Remove matching arrow, head, and label
+        const elements = diagram.querySelectorAll(`.arrow-line[data-direction='${direction}'], .arrow-head[data-direction='${direction}'], .label[data-direction='${direction}']`);
+        elements.forEach(e => e.remove());
+        return;
+      }
+      const size = parseInt(document.querySelector("input[name='size']:checked").value);
+
+      const centerX = 200;
+      const centerY = 150;
+      const offset = 30;
+      let top = centerY;
+      let left = centerX;
+      let line = document.createElement("div");
+      line.className = "arrow-line";
+      line.setAttribute("data-direction", direction);
+      let head = document.createElement("div");
+      head.className = "arrow-head";
+      head.setAttribute("data-direction", direction);
+
+      if (direction === 'up') {
+        top -= size + offset;
+        line.style.top = `${top}px`;
+        line.style.left = `${left - 2}px`;
+        line.style.width = `4px`;
+        line.style.height = `${size}px`;
+        head.style.borderWidth = `0 5px 8px 5px`;
+        head.style.borderColor = `transparent transparent red transparent`;
+        head.style.top = `${top-8}px`;
+        head.style.left = `${left - 5}px`;
+      } else if (direction === 'down') {
+        top += offset;
+        line.style.top = `${top}px`;
+        line.style.left = `${left - 2}px`;
+        line.style.width = `4px`;
+        line.style.height = `${size}px`;
+        head.style.borderWidth = `8px 5px 0 5px`;
+        head.style.borderColor = `red transparent transparent transparent`;
+        head.style.top = `${top + size}px`;
+        head.style.left = `${left - 5}px`;
+      } else if (direction === 'left') {
+        left -= size + offset;
+        line.style.top = `${top - 2}px`;
+        line.style.left = `${left}px`;
+        line.style.width = `${size}px`;
+        line.style.height = `4px`;
+        head.style.borderWidth = `5px 8px 5px 0`;
+        head.style.borderColor = `transparent red transparent transparent`;
+        head.style.top = `${top - 5}px`;
+        head.style.left = `${left-8}px`;
+      } else if (direction === 'right') {
+        left += offset;
+        line.style.top = `${top - 2}px`;
+        line.style.left = `${left}px`;
+        line.style.width = `${size}px`;
+        line.style.height = `4px`;
+        head.style.borderWidth = `5px 0 5px 8px`;
+        head.style.borderColor = `transparent transparent transparent red`;
+        head.style.top = `${top - 5}px`;
+        head.style.left = `${left + size}px`;
+      }
+
+      const label = document.createElement("select");
+      label.className = "label";
+      label.setAttribute("data-direction", direction);
+      label.innerHTML = getForceOptions(currentLevel);
+      if (direction === 'up') {
+        label.style.top = `${top - 10}px`;
+        label.style.left = `${left + 10}px`;
+      } else if (direction === 'down') {
+        label.style.top = `${top + size + 5}px`;
+        label.style.left = `${left + 10}px`;
+      } else if (direction === 'left') {
+        label.style.top = `${top + 10}px`;
+        label.style.left = `${left - 85}px`;
+      } else if (direction === 'right') {
+        label.style.top = `${top + 10}px`;
+        label.style.left = `${left + size + 10}px`;
+      }
+
+      diagram.appendChild(line);
+      diagram.appendChild(head);
+      diagram.appendChild(label);
+    }
+
+    function resetDiagram() {
+      diagram.querySelectorAll(".arrow-line, .arrow-head, .label").forEach(e => e.remove());
+    }
+  
+    const levels = [
+  {
+    title: "Free Body Diagram Practice - Level 1",
+    scenario: "A book is sitting still on a flat table. Identify all the forces acting on it.",
+    image: "level1-solution.png"
+  },
+  {
+    title: "Free Body Diagram Practice - Level 2",
+    scenario: "A person pushes a box across the floor to the right at a constant speed. Add all forces.",
+    image: "level2-solution.png"
+  },
+  {
+    title: "Free Body Diagram Practice - Level 3",
+    scenario: "A person pushes a box to the right and it's speeding up. Include the correct unbalanced forces.",
+    image: "level3-solution.png"
+  },
+  {
+  title: "Free Body Diagram Practice - Level 4",
+  scenario: "A sled is being pulled to the left across a surface, speeding up. Include all forces. <i>(A new type of force is introduced here: Tension is a pulling force transmitted through a string, rope, cable, or any connector that is being stretched. It always pulls, never pushes.)</i>",
+  image: "level4-solution.png"
+}
+,
+  {
+    title: "Free Body Diagram Practice - Level 5",
+    scenario: "A car is cruising to the right at constant speed on a straight, level road. Identify the forces.",
+    image: "level5-solution.png"
+  },
+  {
+    title: "Free Body Diagram Practice - Level 6",
+    scenario: "A skateboard is moving left and slowing down after a push. Include the unbalanced forces.",
+    image: "level6-solution.png"
+  },
+  {
+    title: "Free Body Diagram Practice - Level 7",
+    scenario: "A ball is being pulled through the air to the left with increasing speed. Show all forces.",
+    image: "level7-solution.png"
+  },
+  {
+    title: "Free Body Diagram Practice - Level 8",
+    scenario: "A puck glides on ice with no friction. It is moving at constant velocity.",
+    image: "level8-solution.png"
+  },
+  {
+    title: "Free Body Diagram Practice - Level 9",
+    scenario: "A person holds a box still against a wall. Include the vertical and horizontal forces.",
+    image: "level9-solution.png"
+  },
+  {
+    title: "Free Body Diagram Practice - Level 10",
+    scenario: "An object is pushed rightward and accelerates. Identify all unbalanced forces.",
+    image: "level10-solution.png"
+  },
+  {
+    title: "Free Body Diagram Practice - Level 11",
+    scenario: "A box is being pushed across the floor and slows down. Identify the unbalanced forces involved.",
+    image: "level11-solution.png"
+  },
+  {
+    title: "Free Body Diagram Practice - Level 12",
+    scenario: "A person stands still on a scale in an elevator that is not moving. Identify the forces.",
+    image: "level12-solution.png"
+  },
+  {
+    title: "Free Body Diagram Practice - Level 13",
+    scenario: "A person jumps straight up. Consider the moment their feet just leave the ground.",
+    image: "level13-solution.png"
+  },
+  {
+    title: "Free Body Diagram Practice - Level 14",
+    scenario: "A person is landing from a jump, knees bent. Analyze the forces acting on their body.",
+    image: "level14-solution.png"
+  },
+  {
+    title: "Free Body Diagram Practice - Level 15",
+    scenario: "A person holds a heavy backpack by a rope over a pulley. The backpack is not moving.",
+    image: "level15-solution.png"
+  },
+  {
+    title: "Free Body Diagram Practice - Level 16",
+    scenario: "A bowling ball rolls at constant speed down a smooth hallway.",
+    image: "level16-solution.png"
+  },
+  {
+    title: "Free Body Diagram Practice - Level 17",
+    scenario: "A ball is falling straight down. Air resistance is present.",
+    image: "level17-solution.png"
+  },
+  {
+    title: "Free Body Diagram Practice - Level 18",
+    scenario: "A skydiver has reached terminal velocity. Identify the forces.",
+    image: "level18-solution.png"
+  },
+  {
+    title: "Free Body Diagram Practice - Level 19",
+    scenario: "A block is being pushed across a table, and the applied force is greater than friction.",
+    image: "level19-solution.png"
+  },
+  {
+    title: "Free Body Diagram Practice - Level 20",
+    scenario: "An object is being pulled by two ropes: one to the left, one to the right, with equal force. It stays still.",
+    image: "level20-solution.png"
+  }
+];
+
+    let currentLevel = 0;
+
+    function updateLevelDisplay() {
+      document.getElementById("level-title").textContent = levels[currentLevel].title;
+      document.getElementById("scenario-text").innerHTML = levels[currentLevel].scenario;
+      document.getElementById("level-select").value = currentLevel;
+      resetDiagram();
+      document.getElementById("feedback").innerHTML = "";
+    }
+
+    function nextLevel() {
+      currentLevel = (currentLevel + 1) % levels.length;
+      updateLevelDisplay();
+    }
+
+    function selectLevel(index) {
+      currentLevel = parseInt(index);
+      updateLevelDisplay();
+    }
+
+    function checkAnswer() {
+      const feedback = document.getElementById("feedback");
+      feedback.innerHTML = `<p><strong>Correct Diagram:</strong></p><img src="${levels[currentLevel].image}" alt="Correct Diagram" width="500">`;
+    }
+
+    updateLevelDisplay();
+  function getForceOptions(level) {
+  let options = [
+    '<option value="">Select force</option>',
+    '<option>F_gravity</option>',
+    '<option>F_normal</option>',
+    '<option>F_applied</option>',
+    '<option>F_friction</option>'
+  ];
+  if (level >= 3) {
+    options.push('<option>F_tension</option>');
+  }
+  return options.join('');
+}
+
+</script>
+  </div>
+</body>
+</html>
