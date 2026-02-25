@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8" />
+<title>Momentum Collision Activity</title>
+<style>
+  body { font-family: Arial, sans-serif; text-align: center; }
+  .section { width: 860px; margin: 18px auto; border: 3px solid #000; padding: 12px; }
+  .track { position: relative; height: 140px; border-top: 2px solid #000; border-bottom: 2px solid #000; margin-top: 14px; }
+
+  .cart {
+    position: absolute;
+    width: 90px;
+    height: 54px;
+    border: 2px solid #000;
+    background: #ddd;
+    text-align: center;
+    line-height: 54px;
+    font-weight: bold;
+    user-select: none;
+  }
+  .wheel {
+    position: absolute;
+    width: 14px; height: 14px;
+    border: 2px solid #000;
+    border-radius: 50%;
+    background: #fff;
+    bottom: -12px;
+  }
+
+  .row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .row > div { flex: 1; }
+  .arrow { font-size: 18px; margin: 6px 0 22px 0; }
+  button, select { padding: 9px 16px; font-size: 15px; margin: 8px 6px 0; cursor: pointer; }
+  .small { font-size: 14px; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
+</style>
+</head>
+<body>
+
+<h2>1) Find the missing value using conservation of momentum.</h2>
+
+<div class="section">
+  <div class="row">
+    <div style="text-align:left;">
+      <h3 style="margin:0;">Before the collision</h3>
+      <div class="arrow" id="beforeArrow"></div>
+      <!-- removed: givenLine -->
+    </div>
+
+    <div style="text-align:right;">
+      <div>
+        <label class="small mono" for="scenarioSelect">Scenario:</label>
+        <select id="scenarioSelect" onchange="jumpToScenario(this.value)"></select>
+      </div>
+      <button id="startBtn" onclick="startCollision()">Start Collision</button>
+      <button id="resetBtn" onclick="resetSame()">Reset</button>
+      <button id="newBtn" onclick="nextScenario()">Next Scenario</button>
+    </div>
+  </div>
+
+  <div class="track" id="track">
+    <div class="cart" id="cart1" style="left:160px; top:50px;">1 kg
+      <div class="wheel" style="left:12px;"></div>
+      <div class="wheel" style="right:12px;"></div>
+    </div>
+
+    <div class="cart" id="cart2" style="left:610px; top:50px;">2 kg
+      <div class="wheel" style="left:12px;"></div>
+      <div class="wheel" style="right:12px;"></div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3 style="margin:0 0 8px;">After the collision</h3>
+  <div id="afterText" class="arrow"></div>
+  <div class="small mono" id="statusLine">Press <b>Start Collision</b> to animate.</div>
+
+  <button id="revealBtn" onclick="revealAfterAnswer()" disabled>
+    Reveal Answer
+  </button>
+
+  <div id="momentumBox" class="small mono"
+       style="display:none; text-align:left; margin-top:12px; border-top:2px solid #000; padding-top:10px;">
+  </div>
+</div>
+
+<script>
+  // ------- Visual positions -------
+  const START1 = 270;
+  const START2 = 490;
+  const CART_W = 90;
+  const LEFT_BOUND = 10;
+  const RIGHT_BOUND = 760;
+
+  // Animation controls (unchanged)
+  const dt = 20;            // ms per frame
+  const scale = 50;         // px per (m/s) per second-ish
+
+  // ------- Scenario set (20 physics-consistent elastic collisions) -------
+  const scenarios = [
+    { m1:1, m2:1, v1i:-2, v2i:-4, v1f:-4,  v2f:-2,  unknownType:"v2" },
+    { m1:1, m2:1, v1i: 1, v2i:-4, v1f:-4,  v2f: 1,  unknownType:"v2" },
+    { m1:1, m2:1, v1i: 3, v2i: 1, v1f: 1,  v2f: 3,  unknownType:"v2" },
+    { m1:1, m2:2, v1i:-1, v2i:-4, v1f:-5,  v2f:-2,  unknownType:"v2" },
+    { m1:1, m2:2, v1i: 1, v2i:-2, v1f:-3,  v2f: 0,  unknownType:"v2" },
+    { m1:1, m2:2, v1i: 4, v2i: 1, v1f: 0,  v2f: 3,  unknownType:"v2" },
+    { m1:1, m2:3, v1i:-2, v2i:-4, v1f:-5,  v2f:-3,  unknownType:"v2" },
+    { m1:1, m2:3, v1i: 1, v2i:-3, v1f:-5,  v2f:-1,  unknownType:"v2" },
+    { m1:1, m2:3, v1i: 3, v2i: 1, v1f: 0,  v2f: 2,  unknownType:"v2" },
+    { m1:1, m2:4, v1i: 3, v2i:-2, v1f:-5,  v2f: 0,  unknownType:"v2" },
+
+    { m1:1, m2:5, v1i:-1, v2i:-4, v1f:-6,  v2f:-3,  unknownType:"m2" },
+    { m1:1, m2:5, v1i: 1, v2i:-2, v1f:-4,  v2f:-1,  unknownType:"m2" },
+    { m1:1, m2:3, v1i: 3, v2i:-1, v1f:-3,  v2f: 1,  unknownType:"m2" },
+    { m1:3, m2:5, v1i:-2, v2i:-4, v1f:-4.5,v2f:-2.5,unknownType:"m2" },
+    { m1:1, m2:3, v1i: 2, v2i:-1, v1f:-2.5,v2f: 0.5,unknownType:"m2" },
+    { m1:4, m2:4, v1i: 4, v2i: 2, v1f: 2,  v2f: 4,  unknownType:"m2" },
+    { m1:3, m2:5, v1i:-1, v2i:-3, v1f:-3.5,v2f:-1.5,unknownType:"m2" },
+    { m1:2, m2:2, v1i: 4, v2i:-4, v1f:-4,  v2f: 4,  unknownType:"m2" },
+    { m1:3, m2:1, v1i: 0, v2i:-3, v1f:-1.5,v2f: 1.5,unknownType:"m2" },
+    { m1:3, m2:3, v1i: 3, v2i:-3, v1f:-3,  v2f: 3,  unknownType:"m2" }
+  ];
+
+  // ------- Simulation state -------
+  let m1, m2, v1i, v2i, v1f_given, v2f;
+  let unknownType = "v2";
+  let m2_actual = null;
+  let v2f_given = null;
+
+  let pos1 = START1, pos2 = START2;
+  let animation = null;
+  let collided = false;
+  let finished = false;
+
+  let currentScenarioIndex = 0;
+
+  // Elements
+  const cart1El = document.getElementById("cart1");
+  const cart2El = document.getElementById("cart2");
+  const beforeArrowEl = document.getElementById("beforeArrow");
+  const afterTextEl = document.getElementById("afterText");
+  const statusLineEl = document.getElementById("statusLine");
+  const scenarioSelectEl = document.getElementById("scenarioSelect");
+
+  function signArrow(v) { return v >= 0 ? "→" : "←"; }
+  function fmt(v) {
+    const r = Math.round(v * 100) / 100;
+    return (Number.isInteger(r) ? r.toString() : r.toFixed(2));
+  }
+
+  function setButtons(enabled) {
+    document.getElementById("startBtn").disabled = !enabled;
+    document.getElementById("resetBtn").disabled = false;
+    document.getElementById("newBtn").disabled = false;
+  }
+
+  function stopAnimation() {
+    if (animation) clearInterval(animation);
+    animation = null;
+  }
+
+  function placeCarts() {
+    cart1El.style.left = pos1 + "px";
+    cart2El.style.left = pos2 + "px";
+  }
+
+  function updateTextBefore() {
+    beforeArrowEl.innerHTML = `
+      <div>
+        V = ${fmt(v1i)} m/s ${signArrow(v1i)}
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+        ${signArrow(v2i)} V = ${fmt(v2i)} m/s
+      </div>
+      <div style="margin-top:4px;">
+        <span style="display:inline-block; width:25%;">Cart 1</span>
+        <span style="display:inline-block; width:25%; text-align:right;">Cart 2</span>
+      </div>
+`    ;
+
+    cart1El.childNodes[0].nodeValue = `Cart1: ${m1} kg`;
+
+    if (unknownType === "m2") {
+      cart2El.childNodes[0].nodeValue = `Cart2: ? kg`;
+    } else {
+      cart2El.childNodes[0].nodeValue = `Cart2: ${m2} kg`;
+    }
+  }
+
+  function updateAfterUnknown() {
+    if (unknownType === "v2") {
+      afterTextEl.innerHTML = `
+        <div>
+          ${signArrow(v1f_given)} V = ${fmt(v1f_given)} m/s
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+          V = ?
+        </div>
+        <div style="margin-top:4px; display:flex; justify-content:center; gap:100px;">
+          <span>Cart 1</span>
+          <span>Cart 2</span>
+        </div>
+
+      `;
+    } else {
+      afterTextEl.innerHTML = `
+        <div>
+          ${signArrow(v1f_given)} V = ${fmt(v1f_given)} m/s
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+          ${signArrow(v2f_given)} V = ${fmt(v2f_given)} m/s
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+          m = ?
+        </div>
+        <div style="margin-top:4px 0 12px 0;">
+          <span style="display:inline-block; width:45%;">Cart 1</span>
+          <span style="display:inline-block; width:45%; text-align:right;">Cart 2</span>
+        </div>
+      `;
+    }
+  }
+
+
+  function coeffX(coef) {
+    return `${fmt(coef)}X`;
+  }
+
+  function showMomentumWork() {
+    const box = document.getElementById("momentumBox");
+
+    const p1i = m1 * v1i;
+    const p1f = m1 * v1f_given;
+
+    let beforeLines = "";
+    let afterLines = "";
+    let totalBeforeLine = "";
+    let totalAfterLine = "";
+    let equationLine = "";
+    let solutionLine = "";
+
+    if (unknownType === "m2") {
+      const coefBefore = v2i;
+      const coefAfter  = v2f_given;
+
+      beforeLines = `
+<b>Before collision</b><br>
+Cart 1: p₁ = (${m1})(${fmt(v1i)}) = ${fmt(p1i)} kg·m/s<br>
+Cart 2: p₂ = (X)(${fmt(v2i)}) = ${coeffX(coefBefore)}<br>
+      `.trim();
+
+      totalBeforeLine = `Total: p<sub>before</sub> = ${fmt(p1i)}+(${coeffX(coefBefore)})`;
+
+      afterLines = `
+<b>After collision</b><br>
+Cart 1: p₁' = (${m1})(${fmt(v1f_given)}) = ${fmt(p1f)} kg·m/s<br>
+Cart 2: p₂' = (X)(${fmt(v2f_given)}) = ${coeffX(coefAfter)}<br>
+      `.trim();
+
+      totalAfterLine = `Total: p<sub>after</sub> = ${fmt(p1f)}+(${coeffX(coefAfter)})`;
+
+      equationLine = `${fmt(p1i)}+(${coeffX(coefBefore)}) = ${fmt(p1f)}+(${coeffX(coefAfter)})`;
+
+      const denom = (coefBefore - coefAfter);
+      const X = (p1f - p1i) / denom;
+
+      solutionLine = `X=${fmt(X)}, Cart 2 weighs ${fmt(X)}kg`;
+    } else {
+      const p2i = m2 * v2i;
+      const pTotBefore = p1i + p2i;
+
+      const coefAfter = m2;
+
+      beforeLines = `
+<b>Before collision</b><br>
+Cart 1: p₁ = (${m1})(${fmt(v1i)}) = ${fmt(p1i)} kg·m/s<br>
+Cart 2: p₂ = (${m2})(${fmt(v2i)}) = ${fmt(p2i)} kg·m/s<br>
+      `.trim();
+
+      totalBeforeLine = `Total: p<sub>before</sub> = ${fmt(pTotBefore)} kg·m/s`;
+
+      afterLines = `
+<b>After collision</b><br>
+Cart 1: p₁' = (${m1})(${fmt(v1f_given)}) = ${fmt(p1f)} kg·m/s<br>
+Cart 2: p₂' = (${m2})(X) = ${coeffX(coefAfter)}<br>
+      `.trim();
+
+      totalAfterLine = `Total: p<sub>after</sub> = ${fmt(p1f)}+(${coeffX(coefAfter)})`;
+
+      equationLine = `${fmt(pTotBefore)} = ${fmt(p1f)}+(${coeffX(coefAfter)})`;
+
+      const X = v2f;
+      const dir = (X < 0) ? "to the left" : "to the right";
+
+      solutionLine = `X=${fmt(X)}, Cart 2 is moving at ${fmt(Math.abs(X))}m/s ${dir}`;
+    }
+
+    box.innerHTML = `
+<b>Momentum Breakdown (p = m·v)</b><br><br>
+${beforeLines}<br>
+${totalBeforeLine}<br><br>
+${afterLines}<br>
+${totalAfterLine}<br><br>
+<b>Set totals equal (conservation of momentum)</b><br>
+${equationLine}<br><br>
+<b>Solve for X and identify its meaning</b><br><br>
+${solutionLine}
+    `.trim();
+
+    box.style.display = "block";
+  }
+
+  function hideMomentumWork() {
+    const box = document.getElementById("momentumBox");
+    box.style.display = "none";
+    box.innerHTML = "";
+  }
+
+  function revealAfterAnswer() {
+    if (unknownType === "v2") {
+      afterTextEl.innerHTML =
+        `${signArrow(v1f_given)} V = ${fmt(v1f_given)} m/s &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ${signArrow(v2f)} V = ${fmt(v2f)} m/s`;
+    } else {
+      afterTextEl.innerHTML =
+        `${signArrow(v1f_given)} V = ${fmt(v1f_given)} m/s &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ${signArrow(v2f_given)} V = ${fmt(v2f_given)} m/s &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; m = ${fmt(m2_actual)} kg`;
+
+      cart2El.childNodes[0].nodeValue = `${fmt(m2_actual)} kg`;
+    }
+
+    showMomentumWork();
+  }
+
+  function computeV2Final() {
+    v2f = (m1 * v1i + m2 * v2i - m1 * v1f_given) / m2;
+  }
+
+  function computeM2FromMomentum() {
+    const denom = (v2i - v2f_given);
+    if (Math.abs(denom) < 1e-9) return null;
+    return (m1 * (v1f_given - v1i)) / denom;
+  }
+
+  function buildScenarioMenu() {
+    scenarioSelectEl.innerHTML = "";
+    for (let i = 0; i < scenarios.length; i++) {
+      const opt = document.createElement("option");
+      opt.value = i;
+      opt.textContent = `#${i+1}`;
+      scenarioSelectEl.appendChild(opt);
+    }
+  }
+
+  function saveProgress() {
+    localStorage.setItem("momentumScenarioIndex", String(currentScenarioIndex));
+  }
+
+  function loadProgress() {
+    const saved = localStorage.getItem("momentumScenarioIndex");
+    if (saved !== null) {
+      const n = parseInt(saved, 10);
+      if (!Number.isNaN(n) && n >= 0 && n < scenarios.length) return n;
+    }
+    return 0;
+  }
+
+  function loadScenarioByIndex(idx) {
+    stopAnimation();
+    collided = false;
+    finished = false;
+
+    currentScenarioIndex = idx;
+    saveProgress();
+    scenarioSelectEl.value = String(idx);
+
+    const s = scenarios[idx];
+
+    m1 = s.m1;
+    v1i = s.v1i;
+    v2i = s.v2i;
+    v1f_given = s.v1f;
+    unknownType = s.unknownType;
+
+    if (unknownType === "v2") {
+      m2 = s.m2;
+      m2_actual = null;
+      v2f_given = null;
+      computeV2Final();
+    } else {
+      m2_actual = s.m2;
+      m2 = m2_actual;
+      v2f_given = s.v2f;
+      v2f = v2f_given;
+    }
+
+    pos1 = START1;
+    pos2 = START2;
+    placeCarts();
+
+    updateTextBefore();
+    updateAfterUnknown();
+
+    document.getElementById("revealBtn").disabled = true;
+    hideMomentumWork();
+
+    statusLineEl.innerHTML = `Press <b>Start Collision</b> to animate.`;
+    setButtons(true);
+  }
+
+  function nextScenario() {
+    const next = (currentScenarioIndex + 1) % scenarios.length;
+    loadScenarioByIndex(next);
+  }
+
+  function jumpToScenario(value) {
+    const idx = parseInt(value, 10);
+    if (!Number.isNaN(idx)) loadScenarioByIndex(idx);
+  }
+
+  function resetSame() {
+    stopAnimation();
+    collided = false;
+    finished = false;
+
+    pos1 = START1;
+    pos2 = START2;
+    placeCarts();
+
+    updateAfterUnknown();
+    document.getElementById("revealBtn").disabled = true;
+    hideMomentumWork();
+
+    statusLineEl.innerHTML = `Reset: same scenario. Press <b>Start Collision</b>.`;
+    setButtons(true);
+  }
+
+  function startCollision() {
+    if (animation) return;
+
+    setButtons(false);
+    document.getElementById("resetBtn").disabled = true;
+    document.getElementById("newBtn").disabled = true;
+
+    updateAfterUnknown();
+    hideMomentumWork();
+
+    statusLineEl.innerHTML = `Animating... watch for the collision, then solve for the missing value.`;
+
+    const v1i_px = (v1i * scale) * (dt / 1000);
+    const v2i_px = (v2i * scale) * (dt / 1000);
+    const v1f_px = (v1f_given * scale) * (dt / 1000);
+    const v2f_px = (v2f * scale) * (dt / 1000);
+
+    collided = false;
+    finished = false;
+
+    animation = setInterval(() => {
+      if (!collided) {
+        pos1 += v1i_px;
+        pos2 += v2i_px;
+
+        if (pos1 + CART_W >= pos2) {
+          collided = true;
+          pos1 = pos2 - CART_W;
+        }
+      } else {
+        pos1 += v1f_px;
+        pos2 += v2f_px;
+      }
+
+      if (pos1 + CART_W > pos2) pos2 = pos1 + CART_W;
+
+      placeCarts();
+
+      if (pos1 < LEFT_BOUND || pos2 > RIGHT_BOUND || pos2 < LEFT_BOUND || pos1 > RIGHT_BOUND) {
+        stopAnimation();
+        finished = true;
+
+        document.getElementById("revealBtn").disabled = false;
+        statusLineEl.innerHTML =
+          `Done. Use <b>Reveal Answer</b>, <b>Reset</b> (same scenario) or <b>Next Scenario</b>.`;
+
+        document.getElementById("resetBtn").disabled = false;
+        document.getElementById("newBtn").disabled = false;
+        document.getElementById("startBtn").disabled = false;
+      }
+    }, dt);
+  }
+
+  buildScenarioMenu();
+  const startIdx = loadProgress();
+  loadScenarioByIndex(startIdx);
+</script>
+
+</body>
+</html>
