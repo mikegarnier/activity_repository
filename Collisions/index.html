@@ -133,6 +133,7 @@
   let animation = null;
   let collided = false;
   let finished = false;
+  let hasStarted = false;
 
   let currentScenarioIndex = 0;
 
@@ -365,6 +366,7 @@ ${solutionLine}
     stopAnimation();
     collided = false;
     finished = false;
+    hasStarted = false;
 
     currentScenarioIndex = idx;
     saveProgress();
@@ -418,6 +420,7 @@ ${solutionLine}
     stopAnimation();
     collided = false;
     finished = false;
+    hasStarted = false;
 
     pos1 = START1;
     pos2 = START2;
@@ -432,7 +435,10 @@ ${solutionLine}
   }
 
   function startCollision() {
+    if (hasStarted) return;     // block repeat clicks
+    hasStarted = true;          // lock it immediately
     if (animation) return;
+
 
     setButtons(false);
     document.getElementById("resetBtn").disabled = true;
@@ -479,7 +485,6 @@ ${solutionLine}
 
         document.getElementById("resetBtn").disabled = false;
         document.getElementById("newBtn").disabled = false;
-        document.getElementById("startBtn").disabled = false;
       }
     }, dt);
   }
