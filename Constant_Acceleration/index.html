@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Constant Acceleration Simulation</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 1rem;
+    }
+    #sim-container {
+      position: relative;
+      width: 700px;
+      height: 300px;
+      background: #f3f3f3;
+      border: 1px solid #ccc;
+      overflow: hidden;
+      margin-top: 1rem;
+    }
+    .ball {
+      position: absolute;
+      width: 24px;
+      height: 24px;
+      background: red;
+      border-radius: 50%;
+    }
+    .ramp {
+      position: absolute;
+      width: 700px;
+      height: 4px;
+      background: black;
+      top: 20px;
+      left: 0;
+      transform: rotate(20deg);
+      transform-origin: left bottom;
+    }
+    .mark {
+      position: absolute;
+      width: 2px;
+      height: 10px;
+      background: blue;
+    }
+    .ruler {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 700px;
+      transform: rotate(20deg);
+      transform-origin: left bottom;
+      display: flex;
+      font-size: 10px;
+      color: #666;
+      height: 20px;
+    }
+    .ruler div {
+      width: 6px;
+      height: 100%;
+      border-left: 1px solid #ccc;
+      position: relative;
+    }
+    .ruler div span {
+      position: absolute;
+      top: -10px;
+      left: -2px;
+    }
+    table {
+      margin-left: 20px;
+      border-collapse: collapse;
+    }
+    table td, table th {
+      border: 1px solid black;
+      padding: 4px 8px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Constant Acceleration Simulation</h1>
+  <p><strong>Instructions:</strong><br>
+    Press Play to start the ball rolling down the ramp.<br>
+    Click "Mark Time & Distance" <strong>at least 5 times</strong> while the ball is accelerating.<br>
+    Use your data to complete the lab. The in-class version used feet, but this simulation uses meters.
+  </p>
+  <p><strong>Independent Variable:</strong> Time (s) — <em>X-axis</em><br>
+     <strong>Dependent Variable:</strong> Distance traveled (m) — <em>Y-axis</em><br>
+     <strong>Constants:</strong> Ramp angle, surface, ball type</p>
+
+  <button onclick="startSim()">Play</button>
+  <button onclick="markDistance()">Mark Time & Distance</button>
+  <button onclick="resetSim()">Reset</button>
+
+  <div id="sim-container">
+    <div class="ramp"></div>
+    <div class="ruler" id="ruler"></div>
+    <div class="ball" id="ball"></div>
+  </div>
+
+  <table>
+    <thead>
+      <tr><th>Time (s)</th><th>Distance (m)</th></tr>
+    </thead>
+    <tbody id="data"></tbody>
+  </table>
+
+  <script>
+    const ball = document.getElementById("ball");
+    const dataTable = document.getElementById("data");
+    const ruler = document.getElementById("ruler");
+    let animationId;
+    let startTime;
+    let ballX = 0;
+    let ballY = 0;
+    let isRolling = false;
+    let marks = [];
+
+    const pixelsPerMeter = 6;
+    const acceleration = 20 * 9.8 * Math.sin(20 * Math.PI / 180); // pixels/s²
+
+    for (let i = 0; i < 117; i++) {
+      const tick = document.createElement("div");
+      if (i % 5 === 0) {
+        const label = document.createElement("span");
+        label.textContent = i;
+        tick.appendChild(label);
+      }
+      ruler.appendChild(tick);
+    }
+
+    function updateBall(timeNow) {
+      const elapsed = (timeNow - startTime) / 1000;
+      const s = 1.5 * acceleration * elapsed * elapsed;
+      const angle = 20 * Math.PI / 180;
+      ballX = s * Math.cos(angle);
+      ballY = s * Math.sin(angle);
+
+      ball.style.left = `${ballX}px`;
+      ball.style.top = `${ballY}px`;
+
+      if (ballX < 700) {
+        animationId = requestAnimationFrame(updateBall);
+      }
+    }
+
+    function startSim() {
+      resetSim();
+      isRolling = true;
+      startTime = performance.now();
+      animationId = requestAnimationFrame(updateBall);
+    }
+
+    function markDistance() {
+      if (!isRolling) return;
+      const time = ((performance.now() - startTime) / 1000).toFixed(2);
+      const mark = document.createElement("div");
+      mark.className = "mark";
+      mark.style.left = `${ballX}px`;
+      mark.style.top = `${ballY + 10}px`;
+      document.getElementById("sim-container").appendChild(mark);
+      marks.push(mark);
+
+      const distance = Math.round(Math.sqrt(ballX ** 2 + ballY ** 2) / pixelsPerMeter);
+      const row = document.createElement("tr");
+      row.innerHTML = `<td>${time}</td><td>${distance}</td>`;
+      dataTable.appendChild(row);
+    }
+
+    function resetSim() {
+      cancelAnimationFrame(animationId);
+      ballX = 0;
+      ballY = 0;
+      ball.style.left = "0px";
+      ball.style.top = "0px";
+      isRolling = false;
+      dataTable.innerHTML = "";
+      marks.forEach(m => m.remove());
+      marks = [];
+    }
+  </script>
+</body>
+</html>

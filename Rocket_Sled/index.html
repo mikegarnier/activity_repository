@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Rocket Sled (HTML)</title>
+  <style>
+    :root { --panel:#ffffffd9; --ink:#111; }
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      margin: 0;
+      background: #eee;
+      color: var(--ink);
+    }
+    .wrap { max-width: 980px; margin: 0 auto; padding: 14px; }
+    .card {
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 2px 10px rgba(0,0,0,.06);
+    }
+    .topbar {
+      padding: 10px 14px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+      background:#fafafa;
+      border-bottom:1px solid #e7e7e7;
+    }
+    .topbar h1 { margin: 0; font-size: 18px; font-weight: 700; }
+
+    .grid { display: grid; grid-template-columns: 240px 1fr; gap: 12px; padding: 12px; }
+    @media (max-width: 860px){ .grid { grid-template-columns: 1fr; } }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid #e0e0e0;
+      border-radius: 14px;
+      padding: 12px;
+    }
+    .panel h2 { margin: 0 0 8px; font-size: 14px; }
+
+    .row { display:flex; align-items:center; justify-content:space-between; gap: 10px; margin: 8px 0; }
+
+    .btn {
+      border: 1px solid #cfcfcf;
+      background: #fff;
+      padding: 8px 10px;
+      border-radius: 10px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .btn:active { transform: translateY(1px); }
+    .btn.primary { background: #1f6feb; border-color:#1f6feb; color:#fff; }
+    .btn.warn { background: #fffb; }
+
+    .toggle {
+      display:inline-flex;
+      gap:10px;
+      align-items:center;
+      padding: 8px 10px;
+      border-radius: 12px;
+      border:1px solid #d9d9d9;
+      background:#fff;
+      cursor:pointer;
+      width: 100%;
+      justify-content:flex-start;
+    }
+    .dot { width: 10px; height: 10px; border-radius: 999px; background:#bbb; }
+    .toggle.on .dot { background:#20c997; }
+
+    .small { font-size: 12px; color:#444; line-height: 1.25; }
+    input[type="range"]{ width: 100%; }
+    .stat { font-weight: 700; }
+
+    /* IMPORTANT: avoid CSS stretching of the canvas */
+    canvas {
+      width: 100%;
+      height: auto;
+      aspect-ratio: 900 / 520;
+      display: block;
+      background: linear-gradient(#0aa, #06c);
+      border-radius: 14px;
+    }
+
+    .footerNote { padding: 0 12px 14px; color:#444; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="topbar">
+        <h1>Rocket Sled</h1>
+        <div class="small">Fast, ad-free HTML version (Chromebook-friendly)</div>
+      </div>
+
+      <div class="grid">
+        <!-- Controls -->
+        <div class="panel">
+          <h2>Forces</h2>
+
+          <div class="row">
+            <div id="frictionToggle" class="toggle on" role="button" aria-label="Toggle friction">
+              <div class="dot"></div>
+              <div><b>Friction</b> <span class="small" id="fricLabel">On</span></div>
+            </div>
+          </div>
+
+          <div class="row">
+            <div id="dragToggle" class="toggle on" role="button" aria-label="Toggle air drag">
+              <div class="dot"></div>
+              <div><b>Air Drag</b> <span class="small" id="dragLabel">On</span></div>
+            </div>
+          </div>
+
+          <hr style="border:none;border-top:1px solid #e7e7e7;margin:10px 0;">
+
+          <h2>Thrust</h2>
+          <div class="row">
+            <button class="btn" id="minusBtn">−10</button>
+            <button class="btn" id="plusBtn">+10</button>
+            <button class="btn warn" id="coastBtn" title="Set thrust to zero">Coast</button>
+          </div>
+
+          <div class="row" style="align-items:flex-start; flex-direction:column;">
+            <div class="small">Thrust level (N): <span class="stat" id="thrustRead">0</span></div>
+            <input id="thrustSlider" type="range" min="-200" max="200" step="1" value="0" />
+            <div class="small">Tip: increase thrust until it balances friction/drag → constant speed.</div>
+          </div>
+
+          <hr style="border:none;border-top:1px solid #e7e7e7;margin:10px 0;">
+
+          <h2>Readouts</h2>
+          <div class="row"><div>Net Force</div><div class="stat" id="netF">0 N</div></div>
+          <div class="row"><div>Velocity</div><div class="stat" id="vel">0.0 m/s</div></div>
+
+          <div class="row" style="margin-top: 12px;">
+            <button class="btn primary" id="resetBtn">Reset</button>
+          </div>
+        </div>
+
+        <!-- Simulation canvas -->
+        <div class="panel" style="padding: 0; overflow:hidden;">
+          <!-- NOTE: id="sim" is required by the JS -->
+          <canvas id="sim" width="900" height="520" aria-label="Rocket sled simulation"></canvas>
+          <div class="footerNote">Controls: slider or ± buttons set thrust. Toggle friction/drag. Reset returns to rest.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ---------- Model settings ----------
+    const m = 25;          // kg
+    const g = 9.8;         // m/s^2
+    const muK = 0.15;      // kinetic friction coefficient (when friction on)
+    const muS = 0.20;      // static friction coefficient (prevents “twitching” near rest)
+    const dragK = 0.12;    // air drag coefficient in N/(m/s)^2 (when drag on)
+    const dtMax = 1/45;    // cap dt for stability
+
+    // ---------- State ----------
+    let frictionOn = true;
+    let dragOn = true;
+    let thrust = 0;        // N
+    let x = 120;           // position (pixels)
+    let v = 0;             // m/s (physics units)
+    let lastT = null;
+
+    // ---------- UI ----------
+    // Robustly obtain the simulation canvas. If it was accidentally deleted from the HTML,
+    // we recreate it so the page still runs instead of crashing.
+    function getSimCanvas(){
+      let c = document.getElementById('sim');
+      if (!c) {
+        // Try to place it inside the right-side sim panel.
+        const simPanel = document.querySelector('.grid > .panel[style*="overflow:hidden"], .grid > .panel canvas')?.closest('.panel');
+        c = document.createElement('canvas');
+        c.id = 'sim';
+        c.width = 900;
+        c.height = 520;
+        c.setAttribute('aria-label', 'Rocket sled simulation');
+        if (simPanel) {
+          // Insert at top of the panel
+          simPanel.insertBefore(c, simPanel.firstChild);
+        } else {
+          // Last resort: append to body
+          document.body.appendChild(c);
+        }
+      }
+      return c;
+    }
+
+    const canvas = getSimCanvas();
+    const ctx = canvas.getContext('2d');
+    console.assert(ctx, 'Expected 2D canvas context to be available.');
+
+    const netFEl = document.getElementById('netF');
+    const velEl  = document.getElementById('vel');
+    const thrustRead = document.getElementById('thrustRead');
+    const thrustSlider = document.getElementById('thrustSlider');
+
+    const frictionToggle = document.getElementById('frictionToggle');
+    const dragToggle = document.getElementById('dragToggle');
+    const fricLabel = document.getElementById('fricLabel');
+    const dragLabel = document.getElementById('dragLabel');
+
+    function setToggle(el, on, labelEl){
+      el.classList.toggle('on', on);
+      labelEl.textContent = on ? 'On' : 'Off';
+    }
+
+    setToggle(frictionToggle, frictionOn, fricLabel);
+    setToggle(dragToggle, dragOn, dragLabel);
+
+    thrustSlider.value = thrust;
+    thrustRead.textContent = thrust;
+
+    document.getElementById('plusBtn').addEventListener('click', () => {
+      thrust = Math.min(200, thrust + 10);
+      syncThrustUI();
+    });
+    document.getElementById('minusBtn').addEventListener('click', () => {
+      thrust = Math.max(-200, thrust - 10);
+      syncThrustUI();
+    });
+    document.getElementById('coastBtn').addEventListener('click', () => {
+      thrust = 0;
+      syncThrustUI();
+    });
+    thrustSlider.addEventListener('input', (e) => {
+      thrust = parseFloat(e.target.value);
+      syncThrustUI();
+    });
+
+    function syncThrustUI(){
+      thrustSlider.value = thrust;
+      thrustRead.textContent = thrust.toFixed(0);
+    }
+
+    frictionToggle.addEventListener('click', () => {
+      frictionOn = !frictionOn;
+      setToggle(frictionToggle, frictionOn, fricLabel);
+    });
+    dragToggle.addEventListener('click', () => {
+      dragOn = !dragOn;
+      setToggle(dragToggle, dragOn, dragLabel);
+    });
+
+    document.getElementById('resetBtn').addEventListener('click', reset);
+
+    function reset(){
+      x = 120;
+      v = 0;
+      lastT = null;
+      thrust = 0;        // reset physics value
+      syncThrustUI();    // update slider + number display
+    }
+
+    // ---------- Physics ----------
+    function sign(n){ return n === 0 ? 0 : (n > 0 ? 1 : -1); }
+
+    function step(dt){
+      // Forces (1D horizontal)
+      const N = m * g;
+      let F_fric = 0;
+
+      if (frictionOn) {
+        // Static + kinetic friction model.
+        const F_s_max = muS * N;
+
+        if (Math.abs(v) < 0.05) {
+          // Near rest: static friction can match thrust up to a limit.
+          if (Math.abs(thrust) <= F_s_max) {
+            F_fric = thrust; // exactly cancels thrust → F_net = 0
+          } else {
+            // Breakaway: kinetic friction applies, opposing the impending motion.
+            F_fric = muK * N * sign(thrust);
+          }
+        } else {
+          // Moving: kinetic friction opposes motion.
+          F_fric = muK * N * sign(v);
+        }
+      }
+
+      let F_drag = 0;
+      if (dragOn) {
+        // Quadratic drag opposes motion
+        F_drag = dragK * v * v * sign(v);
+      }
+
+      // Net force: thrust minus opposing terms
+      const F_net = thrust - F_fric - F_drag;
+      const a = F_net / m;
+
+      // Integrate
+      v = v + a * dt;
+
+      // Avoid drifting near zero
+      if (Math.abs(v) < 0.02 && thrust === 0) v = 0;
+
+      // Convert velocity to pixels/sec for motion on canvas:
+      const pxPerMeter = 18; // visual scale (meters -> pixels)
+      x = x + (v * pxPerMeter) * dt;
+
+      // Wrap around
+      if (x > canvas.width + 80) x = -80;
+      if (x < -120) x = canvas.width + 120;
+
+      // Readouts
+      netFEl.textContent = `${F_net.toFixed(0)} N`;
+      velEl.textContent = `${v.toFixed(1)} m/s`;
+
+      return { F_net, F_fric, F_drag, a };
+    }
+
+    // ---------- Drawing ----------
+    function draw(state){
+      const w = canvas.width, h = canvas.height;
+      ctx.clearRect(0,0,w,h);
+
+      // Sky
+      const sky = ctx.createLinearGradient(0,0,0,h);
+      sky.addColorStop(0, '#0b2b3d');
+      sky.addColorStop(1, '#16c1ff');
+      ctx.fillStyle = sky;
+      ctx.fillRect(0,0,w,h);
+
+      // Ground
+      const groundY = h * 0.70;
+      ctx.fillStyle = '#d7d7d7';
+      ctx.fillRect(0, groundY, w, h-groundY);
+
+      // little “rocks”
+      ctx.fillStyle = '#333';
+      for (let i=0;i<30;i++){
+        const rx = (i*37 + 17) % w;
+        const ry = groundY + 12 + (i*13)%28;
+        ctx.beginPath();
+        ctx.arc(rx, ry, 2 + (i%3), 0, Math.PI*2);
+        ctx.fill();
+      }
+
+      // Trees
+      function tree(tx){
+        ctx.fillStyle = '#1f6b2a';
+        ctx.beginPath();
+        ctx.moveTo(tx, groundY-90);
+        ctx.lineTo(tx-30, groundY-20);
+        ctx.lineTo(tx+30, groundY-20);
+        ctx.closePath();
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(tx, groundY-120);
+        ctx.lineTo(tx-24, groundY-60);
+        ctx.lineTo(tx+24, groundY-60);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#6b3e1f';
+        ctx.fillRect(tx-6, groundY-20, 12, 24);
+      }
+      tree(110); tree(220); tree(760);
+
+      // Sled
+      const sledY = groundY - 18;
+      ctx.save();
+      ctx.translate(x, sledY);
+
+      ctx.fillStyle = '#c81d25';
+      ctx.strokeStyle = '#111';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(-34,-18,68,24,10);
+      ctx.fill();
+      ctx.stroke();
+
+      // skid
+      ctx.strokeStyle = '#111';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(-40, 6);
+      ctx.lineTo(40, 6);
+      ctx.stroke();
+
+      // rocket flame on the opposite side of thrust direction
+      if (thrust !== 0){
+        const flame = Math.min(22, 6 + Math.abs(thrust)/12);
+        const goingRight = thrust > 0;
+        const flameX = goingRight ? -34 : 34;
+        const dir = goingRight ? -1 : 1;
+
+        ctx.fillStyle = '#ffb703';
+        ctx.beginPath();
+        ctx.moveTo(flameX, -6);
+        ctx.lineTo(flameX + dir*flame, 0);
+        ctx.lineTo(flameX, 6);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = '#fb8500';
+        ctx.beginPath();
+        ctx.moveTo(flameX, -4);
+        ctx.lineTo(flameX + dir*(flame*0.7), 0);
+        ctx.lineTo(flameX, 4);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      // driver dot
+      ctx.fillStyle = '#111';
+      ctx.beginPath();
+      ctx.arc(14, -12, 4, 0, Math.PI*2);
+      ctx.fill();
+
+      ctx.restore();
+
+      // --- Top HUD row (FBD | Speedometer | Readouts) ---
+      const hudTop = 56;
+      const pad = 20;
+
+      const fbdX = pad;
+      const fbdW = 260;
+      const fbdH = 190;   // keep the larger FBD
+
+      const infoW = 220;
+      const infoH = 120;  // readout height
+      const infoX = w - pad - infoW;
+
+      const speedoR = 80;
+      const speedoCx = (fbdX + fbdW + infoX) / 2;
+      const speedoCy = hudTop + fbdH / 2;
+
+      // Readouts box (right)
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.roundRect(infoX, hudTop, infoW, infoH, 14);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = '#111';
+      ctx.font = 'bold 16px system-ui, sans-serif';
+      ctx.fillText(`Mass: ${m.toFixed(0)} kg`, infoX + 18, hudTop + 30);
+      ctx.fillText(`Net Force: ${state.F_net.toFixed(0)} N`, infoX + 18, hudTop + 60);
+      ctx.fillText(`Velocity: ${v.toFixed(1)} m/s`, infoX + 18, hudTop + 90);
+
+      // Speedometer (middle)
+      drawSpeedometer(speedoCx, speedoCy, speedoR, v);
+
+      // Free body diagram (left)
+      drawFBD(state, fbdX, hudTop, fbdW, fbdH);
+
+      // Title strip
+      ctx.fillStyle = 'rgba(0,0,0,0.18)';
+      ctx.fillRect(0,0,w,44);
+      ctx.fillStyle = '#fff';
+      ctx.font = '700 18px system-ui, sans-serif';
+      ctx.fillText('Rocket Sled (1D)', 14, 28);
+    }
+
+    function drawSpeedometer(cx, cy, r, speed){
+      const s = Math.max(0, Math.min(60, speed));
+      const start = (-140) * Math.PI/180;
+      const end   = ( 140) * Math.PI/180;
+      const t = s / 60;
+      const needle = start + t * (end - start);
+
+      ctx.save();
+      ctx.translate(cx, cy);
+
+      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+      ctx.strokeStyle = 'rgba(0,0,0,0.18)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(0,0,r,0,Math.PI*2);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.strokeStyle = '#333';
+      for (let i=0;i<=6;i++){
+        const ang = start + (i/6)*(end-start);
+        const x1 = Math.cos(ang)*(r-10);
+        const y1 = Math.sin(ang)*(r-10);
+        const x2 = Math.cos(ang)*(r-2);
+        const y2 = Math.sin(ang)*(r-2);
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(x1,y1);
+        ctx.lineTo(x2,y2);
+        ctx.stroke();
+      }
+
+      ctx.strokeStyle = '#c81d25';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(0,0);
+      ctx.lineTo(Math.cos(needle)*(r-18), Math.sin(needle)*(r-18));
+      ctx.stroke();
+
+      ctx.fillStyle = '#111';
+      ctx.beginPath();
+      ctx.arc(0,0,5,0,Math.PI*2);
+      ctx.fill();
+
+      ctx.font = '700 12px system-ui, sans-serif';
+      ctx.fillText('m/s', -12, 8);
+      ctx.font = '700 16px system-ui, sans-serif';
+      ctx.fillText(`${s.toFixed(0)}`, -10, 26);
+
+      ctx.restore();
+    }
+
+    function drawFBD(state, panelX = 20, panelY = 56, panelW = 260, panelH = 190){
+      ctx.save();
+      ctx.fillStyle = 'rgba(255,255,255,0.86)';
+      ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.roundRect(panelX, panelY, panelW, panelH, 12);
+      ctx.fill();
+      ctx.stroke();
+
+      // Title (two lines)
+      ctx.fillStyle = '#111';
+      ctx.font = '700 16px system-ui, sans-serif';
+      ctx.fillText('Free Body', panelX + 14, panelY + 26);
+      ctx.fillText('Diagram', panelX + 14, panelY + 46);
+
+      // Diagram center
+      const cx = panelX + panelW/2;
+      const cy = panelY + 110;
+
+      // Object
+      ctx.strokeStyle = '#111';
+      ctx.lineWidth = 2;
+      ctx.fillStyle = '#fff';
+      const boxW = 70, boxH = 70;
+      ctx.beginPath();
+      ctx.roundRect(cx - boxW/2, cy - boxH/2, boxW, boxH, 0);
+      ctx.fill();
+      ctx.stroke();
+
+      function arrow(x1, y1, x2, y2){
+        const ang = Math.atan2(y2-y1, x2-x1);
+        const headLen = 10;
+        const headSpread = Math.PI/10;
+
+        const shaftX2 = x2 - headLen * Math.cos(ang);
+        const shaftY2 = y2 - headLen * Math.sin(ang);
+
+        ctx.strokeStyle = '#c81d25';
+        ctx.lineWidth = 3;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(x1,y1);
+        ctx.lineTo(shaftX2,shaftY2);
+        ctx.stroke();
+
+        const hx1 = x2 - headLen*Math.cos(ang - headSpread);
+        const hy1 = y2 - headLen*Math.sin(ang - headSpread);
+        const hx2 = x2 - headLen*Math.cos(ang + headSpread);
+        const hy2 = y2 - headLen*Math.sin(ang + headSpread);
+
+        ctx.fillStyle = '#c81d25';
+        ctx.beginPath();
+        ctx.moveTo(x2,y2);
+        ctx.lineTo(hx1,hy1);
+        ctx.lineTo(hx2,hy2);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      function drawForceLabel(text, dir, x, y){
+        ctx.fillStyle = '#111';
+        ctx.font = '700 16px system-ui, sans-serif';
+        const prevAlign = ctx.textAlign;
+        ctx.textAlign = dir < 0 ? 'right' : 'left';
+        ctx.fillText(text, x, y);
+        ctx.textAlign = prevAlign;
+      }
+
+      // Fixed vertical arrows + labels
+      const vLen = 40;
+      arrow(cx, cy - boxH/2, cx, (cy - boxH/2) - vLen);
+      drawForceLabel('F_normal', 1, cx + 14, (cy - boxH/2) - vLen + 18);
+
+      arrow(cx, cy + boxH/2, cx, (cy + boxH/2) + vLen);
+      drawForceLabel('F_gravity', 1, cx + 14, (cy + boxH/2) + vLen - 2);
+
+      // --- Nonlinear arrow scaling ("knee") so small forces are still visible ---
+      function kneeLen(absF, kneeN, fastMaxPx, slowExtraPx, maxN){
+        const f = Math.min(Math.max(0, absF), maxN);
+        if (f === 0) return 0;
+        const fastPart = (Math.min(f, kneeN) / kneeN) * fastMaxPx;
+        const slowPart = (Math.max(0, f - kneeN) / Math.max(1, (maxN - kneeN))) * slowExtraPx;
+        return fastPart + slowPart;
+      }
+
+      // Thrust arrow scaling
+      const absThrust = Math.abs(thrust);
+      const kneeN = 10;
+      const fastMaxPx = 15;
+      const slowExtraPx = 25;
+      const maxThrustN = 200;
+      const thrustLen = absThrust === 0 ? 0 : (
+        (Math.min(absThrust, kneeN) / kneeN) * fastMaxPx +
+        (Math.max(0, absThrust - kneeN) / (maxThrustN - kneeN)) * slowExtraPx
+      );
+
+      // Friction + Drag
+      const fricLen = kneeLen(Math.abs(state.F_fric), 5, 18, 26, 120);
+      const dragLen = kneeLen(Math.abs(state.F_drag), 8, 26, 30, 120);
+
+      // Stable label placement near the box edge
+      const labelPadX = 16;
+      const labelDropY = 22;
+      const offset = 6;
+
+      // Thrust
+      if (thrust !== 0){
+        const dir = thrust > 0 ? 1 : -1;
+        arrow(
+          cx + dir*(boxW/2 + offset), cy,
+          cx + dir*(boxW/2 + offset + thrustLen), cy
+        );
+        drawForceLabel('F_thrust', dir, cx + dir*(boxW/2 + labelPadX), cy + labelDropY);
+      }
+
+      // Friction + Air (oppose velocity)
+      if (v !== 0){
+        const dir = v > 0 ? -1 : 1;
+
+        if (frictionOn){
+          // Start arrows slightly outside the box so small forces don't look "inside" it.
+          arrow(
+            cx + dir*(boxW/2 + offset), cy + 22,
+            cx + dir*(boxW/2 + offset + fricLen), cy + 22
+          );
+          drawForceLabel('F_friction', dir, cx + dir*(boxW/2 + labelPadX), (cy + 22) + labelDropY);
+        }
+
+        if (dragOn){
+          // Start arrows slightly outside the box so small forces don't look "inside" it.
+          arrow(
+            cx + dir*(boxW/2 + offset), cy - 22,
+            cx + dir*(boxW/2 + offset + dragLen), cy - 22
+          );
+          drawForceLabel('F_air', dir, cx + dir*(boxW/2 + labelPadX), (cy - 22) + labelDropY);
+        }
+      }
+
+      ctx.restore();
+    }
+
+    // ---------- Animation loop ----------
+    function tick(t){
+      if (lastT == null) lastT = t;
+      const dt = Math.min(dtMax, (t - lastT) / 1000);
+      lastT = t;
+
+      const state = step(dt);
+      draw(state);
+
+      requestAnimationFrame(tick);
+    }
+
+    // Canvas roundRect polyfill for older browsers
+    if (!CanvasRenderingContext2D.prototype.roundRect) {
+      CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
+        r = Math.min(r, w / 2, h / 2);
+        this.beginPath();
+        this.moveTo(x + r, y);
+        this.arcTo(x + w, y, x + w, y + h, r);
+        this.arcTo(x + w, y + h, x, y + h, r);
+        this.arcTo(x, y + h, x, y, r);
+        this.arcTo(x, y, x + w, y, r);
+        this.closePath();
+        return this;
+      };
+    }
+
+    // “Test cases” / sanity checks
+    (function sanityChecks(){
+      console.assert(typeof step === 'function', 'Expected step() to exist.');
+      console.assert(typeof draw === 'function', 'Expected draw() to exist.');
+      console.assert(canvas.width === 900 && canvas.height === 520, 'Expected canvas to be 900×520.');
+      // Basic physics sanity: with zero thrust at rest, velocity should remain ~0 for a few steps.
+      const v0 = v;
+      for (let i=0;i<5;i++) step(1/60);
+      console.assert(Math.abs(v - v0) < 1e-6, 'Expected no motion at rest with zero thrust.');
+      reset();
+    })();
+
+    requestAnimationFrame(tick);
+  </script>
+</body>
+</html>

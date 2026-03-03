@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Customizable Graph</title>
+    <style>
+      input[type="text"] {
+        width: 80px; /* Adjust as needed */
+        text-align: center; /* Centers the text inside */
+      }
+      input[type="number"] {
+        width: 60px;
+        text-align: center; /* Centers the text inside */
+      }
+      body,
+      html,
+      iframe {
+        background-color: white !important;
+      }
+
+      body {
+        font-family: Arial, sans-serif;
+        text-align: center;
+      }
+      .graph-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        margin-top: 20px;
+      }
+      .y-label {
+        writing-mode: vertical-rl;
+        transform: rotate(180deg);
+        font-size: 18px;
+        font-weight: bold;
+        margin-right: 15px;
+      }
+      .x-label {
+        text-align: center;
+        font-size: 18px;
+        font-weight: bold;
+        margin-top: 10px;
+      }
+      canvas {
+        border: 2px solid black;
+      }
+      .controls {
+        margin-top: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Customizable Graph</h2>
+    <p>Reminder: the independent variable is always on the X-Axis</p>
+
+    <div class="controls">
+      <label for="xLabel">X-Axis Label:</label>
+      <input type="text" id="xLabel" placeholder="X-Axis" />
+      <label for="yLabel">Y-Axis Label:</label>
+      <input type="text" id="yLabel" placeholder="Y-Axis" />
+      <br /><br />
+
+      <label for="xIncrement">X-Axis Increment:</label>
+      <input type="number" id="xIncrement" value="1" min="1" />
+      <label for="yIncrement">Y-Axis Increment:</label>
+      <input type="number" id="yIncrement" value="1" min="1" />
+      <br /><br />
+
+      <button onclick="updateGraph()">Update Graph</button>
+    </div>
+
+    <hr />
+
+    <div class="controls">
+      <label for="xValue">X Value:</label>
+      <input type="number" id="xValue" />
+      <label for="yValue">Y Value:</label>
+      <input type="number" id="yValue" />
+      <button onclick="plotPoint()">Plot Point</button>
+    </div>
+
+    <div class="graph-container">
+      <div class="y-label" id="yLabelText">Y-Axis</div>
+      <canvas id="graphCanvas" width="400" height="400"></canvas>
+    </div>
+    <div class="x-label" id="xLabelText">X-Axis</div>
+
+    <script>
+      const canvas = document.getElementById("graphCanvas");
+      const ctx = canvas.getContext("2d");
+
+      let xIncrement = 1,
+        yIncrement = 1;
+      let xLabel = "X-Axis",
+        yLabel = "Y-Axis";
+
+      function updateGraph() {
+        xIncrement = Math.round(
+          parseFloat(document.getElementById("xIncrement").value)
+        );
+        yIncrement = Math.round(
+          parseFloat(document.getElementById("yIncrement").value)
+        );
+        xLabel = document.getElementById("xLabel").value || "X-Axis";
+        yLabel = document.getElementById("yLabel").value || "Y-Axis";
+
+        document.getElementById("xLabelText").textContent = xLabel;
+        document.getElementById("yLabelText").textContent = yLabel;
+
+        drawGrid();
+      }
+
+      function drawGrid() {
+        ctx.fillStyle = "#f0f0f0"; // Light gray background
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = "#ccc";
+
+        let xMax = 10 * xIncrement;
+        let yMax = 10 * yIncrement;
+        let cellSizeX = canvas.width / 10;
+        let cellSizeY = canvas.height / 10;
+
+        ctx.font = "14px Arial";
+        ctx.fillStyle = "black";
+
+        // Draw Grid Lines and Axis Numbers
+        for (let i = 0; i <= 10; i++) {
+          let posX = i * cellSizeX;
+          let posY = i * cellSizeY;
+
+          ctx.beginPath();
+          ctx.moveTo(posX, 0);
+          ctx.lineTo(posX, canvas.height);
+          ctx.moveTo(0, posY);
+          ctx.lineTo(canvas.width, posY);
+          ctx.stroke();
+
+          // Draw axis numbers **outside** the grid
+          let xValue = i * xIncrement;
+          let yValue = i * yIncrement;
+
+          if (i > 0) {
+            ctx.fillText(xValue, posX - 8, canvas.height - 5); // X-axis numbers below grid
+            ctx.fillText(yValue, 5, canvas.height - posY + 5); // Y-axis numbers to the left of grid
+          }
+        }
+
+        // Draw axes
+        ctx.strokeStyle = "black";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, canvas.height);
+        ctx.lineTo(canvas.width, canvas.height);
+        ctx.moveTo(0, 0);
+        ctx.lineTo(0, canvas.height);
+        ctx.stroke();
+      }
+
+      function plotPoint() {
+        let x = Math.round(parseFloat(document.getElementById("xValue").value));
+        let y = Math.round(parseFloat(document.getElementById("yValue").value));
+
+        let xMax = 10 * xIncrement;
+        let yMax = 10 * yIncrement;
+
+        if (isNaN(x) || isNaN(y) || x < 0 || x > xMax || y < 0 || y > yMax) {
+          alert(
+            `Please enter valid X (0 to ${xMax}) and Y (0 to ${yMax}) values.`
+          );
+          return;
+        }
+
+        // Convert input values to canvas coordinates
+        let canvasX = (x / xMax) * canvas.width;
+        let canvasY = canvas.height - (y / yMax) * canvas.height;
+
+        ctx.fillStyle = "red";
+        ctx.beginPath();
+        ctx.arc(canvasX, canvasY, 5, 0, 2 * Math.PI);
+        ctx.fill();
+      }
+
+      // Initialize graph
+      drawGrid();
+    </script>
+  </body>
+</html>

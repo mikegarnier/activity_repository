@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Energy Savings & Power Calculator</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        text-align: center;
+        padding: 20px;
+      }
+      .container-wrapper {
+        display: flex;
+        justify-content: center;
+        gap: 20px;
+      }
+      .container {
+        width: 400px;
+        background: #f4f4f4;
+        padding: 20px;
+        border-radius: 8px;
+      }
+      label,
+      input {
+        display: block;
+        margin: 10px 0;
+        width: 100%;
+      }
+      button {
+        margin-top: 10px;
+        padding: 10px;
+        width: 100%;
+        cursor: pointer;
+      }
+      .result {
+        font-size: 18px;
+        margin-top: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container-wrapper">
+      <div class="container">
+        <h2>Power Output Calculator</h2>
+        <p>
+          Use this calculator to determine how much power (in watts) would be
+          generated over a full 24-hour day based on the number of pennies
+          lifted.
+        </p>
+        <label for="pennies">Number of Pennies Lifted:</label>
+        <input
+          type="number"
+          id="pennies"
+          step="1"
+          value="10"
+          oninput="calculatePower()"
+        />
+
+        <label for="distance">Distance Lifted (m):</label>
+        <input type="number" id="distance" value="0.65" disabled />
+
+        <label for="time">Time Taken (s):</label>
+        <input
+          type="number"
+          id="time"
+          step="0.01"
+          value="2"
+          oninput="calculatePower()"
+        />
+
+        <button onclick="calculatePower()">Calculate Power</button>
+
+        <div class="result" id="powerResult"></div>
+      </div>
+
+      <div class="container">
+        <h2>Energy Savings Calculator</h2>
+        <p>
+          Take the power output per day from the calculator on the left and
+          enter it into the "Energy from Wind" box to see your potential energy
+          savings.
+        </p>
+        <label for="costPerWatt">Cost of Electricity per Watt ($):</label>
+        <input type="number" id="costPerWatt" step="0.01" value="0.12" />
+
+        <label for="totalEnergy">Total Energy Used per Day (Watt-hours):</label>
+        <input type="number" id="totalEnergy" step="1" value="1000" />
+
+        <label for="windEnergy">Energy from Wind per Day (Watt-hours):</label>
+        <input type="number" id="windEnergy" step="1" value="300" />
+
+        <button onclick="calculateSavings()">Calculate Savings</button>
+
+        <div class="result" id="savingsResult"></div>
+      </div>
+    </div>
+
+    <script>
+      function calculateSavings() {
+        let costPerWatt = parseFloat(
+          document.getElementById("costPerWatt").value
+        );
+        let totalEnergy = parseFloat(
+          document.getElementById("totalEnergy").value
+        );
+        let windEnergy = parseFloat(
+          document.getElementById("windEnergy").value
+        );
+
+        if (windEnergy > totalEnergy) {
+          alert("Wind energy cannot exceed total energy usage.");
+          return;
+        }
+
+        let gridEnergy = totalEnergy - windEnergy;
+        let costWithoutWind = (totalEnergy / 1000) * costPerWatt;
+        let costWithWind = (gridEnergy / 1000) * costPerWatt;
+        let savings = costWithoutWind - costWithWind;
+
+        let savingsPerMonth = savings * 30;
+        let savingsPerYear = savings * 365;
+        document.getElementById("savingsResult").innerText = `Estimated Savings:
+            Per Day: $${savings.toFixed(2)}
+            Per Month: $${savingsPerMonth.toFixed(2)}
+            Per Year: $${savingsPerYear.toFixed(2)}`;
+      }
+
+      function calculatePower() {
+        let pennyMass = 0.0025; // Mass of one penny in kg
+        let numPennies = parseFloat(document.getElementById("pennies").value);
+        let distance = 0.65; // Fixed distance in meters
+        let time = parseFloat(document.getElementById("time").value);
+
+        if (time <= 0) {
+          alert("Time must be greater than zero.");
+          return;
+        }
+
+        let totalMass = numPennies * pennyMass;
+        let force = totalMass * 9.81; // Force = mass * gravity
+        let work = force * distance; // Work = force * distance
+        let power = work / time; // Power = work / time
+        let powerPerDay = power * 86400; // Power output over 24 hours (86400 seconds)
+
+        document.getElementById(
+          "powerResult"
+        ).innerText = `Power Output: ${power.toFixed(
+          3
+        )} W (Instantaneous), ${powerPerDay.toFixed(3)} W per day`;
+      }
+    </script>
+  </body>
+</html>

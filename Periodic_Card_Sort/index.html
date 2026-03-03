@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Periodic Table Puzzle</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: sans-serif;
+      overflow: hidden;
+    }
+    #game-area {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      background-color: #f0f0f0;
+    }
+    #instructions-box {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: #fff;
+      border: 2px solid #444;
+      padding: 10px;
+      max-width: 1000px;
+      z-index: 1000;
+      cursor: pointer;
+      overflow: auto;
+      transition: all 0.3s ease;
+    }
+    #instructions-box.collapsed {
+      width: auto;
+      height: auto;
+      padding: 5px 10px;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+    #instructions-box.expanded {
+      width: calc(50vw - 30px);
+      height: calc(100vh - 60px);
+      max-height: calc(100vh - 60px);
+    }
+    .card {
+      position: absolute;
+      width: 70px;
+      height: 100px;
+      background-color: #ffffff;
+      border: 2px solid #444;
+      box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+      text-align: center;
+      font-size: 16px;
+      font-weight: bold;
+      line-height: 40px;
+      cursor: grab;
+      user-select: none;
+      transition: transform 0.2s ease;
+    }
+    .card.zoomed {
+      transform: scale(3.5);
+      z-index: 10;
+    }
+    #grid {
+      position: absolute;
+      top: 50px;
+      left: 50vw;
+      transform: translateX(-50%);
+      width: 880px;
+      height: 550px;
+      display: grid;
+      grid-template-columns: repeat(8, 110px);
+      grid-template-rows: repeat(5, 110px);
+      gap: 10px;
+    }
+    .drop-zone {
+      width: 100px;
+      height: 100px;
+      border: 1px dashed #888;
+      background-color: #e0e0e0;
+    }
+    #dial {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      font-size: 20px;
+      font-weight: bold;
+      z-index: 1000;
+    }
+  </style>
+</head>
+<body>
+  <div id="game-area">
+    <div id="instructions-box" class="collapsed"><strong>Instructions: Click Here</strong></div>
+    <div id="grid"></div>
+    <div id="dial">Proximity Indicator: Cold</div>
+  </div>
+
+  <script>
+    const gameArea = document.getElementById('game-area');
+    const grid = document.getElementById('grid');
+    const dial = document.getElementById('dial');
+    const instructionsBox = document.getElementById('instructions-box');
+
+    instructionsBox.addEventListener('click', () => {
+      instructionsBox.classList.toggle('expanded');
+      instructionsBox.classList.toggle('collapsed');
+      if (instructionsBox.classList.contains('expanded')) {
+        instructionsBox.innerHTML = `
+          <strong>Instructions</strong><br><br>
+          <strong>Double-click a card to Zoom, double-click again to UnZoom.</strong><br><br>
+          <strong>Drag and Drop cards to find the most logical overall pattern.</strong><br><br>
+          Find an overall pattern that all of the cards will fit into.<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Hint: it's more like patterns within patterns.  Have you seen Inception?<br><br>
+          Start by putting the cards in groups/piles first based on common characteristics.<br><br>
+          Look for patterns within those groups, then patterns between the groups.<br><br>
+          Think about top to bottom AND left to right.<br><br>
+          Investigate all info on each card.<br><br>
+	  Use the Proximity Indicator in the top right.  <br>
+	  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; It gives you just a hint about what area a card or group would likely fit in.<br><br>
+	  Tip: Use Full Screen mode for easier viewing.
+          <strong>Click this box again to collapse.</strong>
+        `;
+      } else {
+        instructionsBox.innerHTML = '<strong>Instructions: Click Here</strong>';
+      }
+    });
+
+    const cards = [];
+    let draggingCard = null;
+    let offsetX = 0;
+    let offsetY = 0;
+
+    const correctPositions = {
+      1: 0, 2: 7, 3: 8, 4: 9, 5: 10, 6: 11, 7: 12, 8: 13, 9: 14,
+      10: 15, 11: 16, 12: 17, 13: 18, 14: 19, 15: 20, 16: 21,
+      17: 22, 18: 23, 19: 24, 20: 25, 21: 26, 22: 28, 23: 29,
+      24: 30, 25: 31, 26: 32, 27: 33, 28: 34, 29: 35, 30: 36,
+      31: 37, 32: 38, 33: 39
+    };
+
+    for (let i = 0; i < 40; i++) {
+      const zone = document.createElement('div');
+      zone.classList.add('drop-zone');
+      grid.appendChild(zone);
+    }
+
+    for (let i = 0; i < 33; i++) {
+      const cardNumber = i + 1;
+      const card = document.createElement('div');
+      card.classList.add('card');
+      const img = document.createElement('img');
+      img.src = `images/${cardNumber}.jpg`;
+      img.alt = `Card ${cardNumber}`;
+      img.style.width = '100%';
+      img.style.height = '100%';
+      img.style.objectFit = 'cover';
+      card.appendChild(img);
+      card.style.left = `${Math.random() * (window.innerWidth - 100)}px`;
+      card.style.top = `${Math.random() * (window.innerHeight - 100)}px`;
+      card.setAttribute('data-id', cardNumber);
+
+      card.addEventListener('mousedown', (e) => {
+        draggingCard = card;
+        offsetX = e.offsetX;
+        offsetY = e.offsetY;
+      });
+
+      card.addEventListener('dblclick', () => {
+        card.classList.toggle('zoomed');
+      });
+
+      gameArea.appendChild(card);
+      cards.push(card);
+    }
+
+    document.addEventListener('mousemove', (e) => {
+      if (!draggingCard) return;
+      draggingCard.style.left = `${e.pageX - offsetX}px`;
+      draggingCard.style.top = `${e.pageY - offsetY}px`;
+
+      const cardNumber = parseInt(draggingCard.getAttribute('data-id'));
+      const gridIndex = correctPositions[cardNumber];
+      if (gridIndex === undefined) {
+        dial.textContent = 'Proximity Indicator: Cold';
+        return;
+      }
+
+      const cardX = e.pageX;
+      const cardY = e.pageY;
+
+      const correctCol = gridIndex % 8;
+      const correctRow = Math.floor(gridIndex / 8);
+
+      const gridRect = grid.getBoundingClientRect();
+      const currentCol = Math.floor((cardX - gridRect.left) / 110);
+      const currentRow = Math.floor((cardY - gridRect.top) / 110);
+
+      const colDiff = Math.abs(currentCol - correctCol);
+      const rowDiff = Math.abs(currentRow - correctRow);
+      const distance = Math.max(colDiff, rowDiff);
+
+      if (distance <= 1) {
+        dial.textContent = 'Proximity Indicator: Hot';
+      } else if (distance <= 3) {
+        dial.textContent = 'Proximity Indicator: Warm';
+      } else {
+        dial.textContent = 'Proximity Indicator: Cold';
+      }
+    });
+
+    window.addEventListener('mouseup', (e) => {
+      if (draggingCard) {
+        draggingCard.style.cursor = 'grab';
+        draggingCard = null;
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bohr Model Builder</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: sans-serif;
+    }
+    #game-area {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      background: #fafafa;
+    }
+    .circle {
+      position: absolute;
+      border-radius: 50%;
+      border: 2px solid black;
+    }
+    .nucleus {
+      border-color: red;
+      background: rgba(255, 0, 0, 0.05);
+    }
+    .tray {
+      position: absolute;
+      width: 100px;
+      height: 150px;
+      border: 2px solid #ccc;
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 5px;
+    }
+    .label {
+      width: 100%;
+      text-align: center;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    .dot-container {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-content: flex-start;
+      height: 90px;
+      width: 100%;
+    }
+    .dot {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      position: relative;
+      cursor: grab;
+      margin: 2px;
+    }
+    .proton { background: red; border: 1px solid black; width: 16px; height: 16px; }
+    .neutron { background: white; border: 1px solid #000; width: 16px; height: 16px; }
+    .electron { background: blue; }
+    .element-card {
+      position: absolute;
+      width: 90px;
+      height: 70px;
+      border: 2px solid #000;
+      background: #eee;
+      text-align: center;
+      line-height: 20px;
+      padding-top: 3px;
+      font-weight: bold;
+      font-size: 14px;
+      cursor: pointer;
+      user-select: none;
+      transition: transform 0.5s;
+    }
+    .card-flipped {
+      background: #fff;
+      color: black;
+    }
+      .card-highlighted {
+  outline: 3px solid gold;
+}
+
+.card-zoomed {
+      width: 300px !important;
+      height: 300px !important;
+      z-index: 1001;
+      left: calc(50% + 300px) !important;
+      top: 50% !important;
+      transform: translate(-50%, -50%) scale(1);
+      transition: all 0.4s ease;
+    }
+  </style>
+    <style>
+      #instructions-toggle {
+        position: absolute;
+        top: 0;
+        left: 15%;
+        width: 48%;
+        height: 25px;
+        background: white;
+        border: 2px solid black;
+        color: black;
+        font-weight: bold;
+        text-align: center;
+        line-height: 25px;
+        cursor: pointer;
+        z-index: 2000;
+      }
+      #instructions-box {
+        display: none;
+        position: absolute;
+        top: 25px;
+        left: 25%;
+        width: 50%;
+        height: 80%;
+        background: white;
+        border: 2px solid black;
+        z-index: 2001;
+        padding: 10px;
+        line-height: 35px;
+        font-size: 20px;
+        overflow-y: auto;
+      }
+    </style>
+</head>
+<body>
+  <div id="instructions-toggle">Bohr Model Simulation: Click for Instructions</div>
+  <div id="instructions-box">
+    <ul>
+      <li>Assume that all atoms have a neutral charge <br>(proton# = electron#).</li>
+      <li>Click on an element on the right once to highlight it.</li>
+      <li>Build the Bohr Model of that neutral atom.</li>      
+      <li>Drag red dots into the nucleus to represent protons.</li>
+      <li>Drag white dots into the nucleus to represent neutrons.</li>
+      <li>Drag blue dots to rings to place electrons.</li>
+      <li>Electrons will have placement markers as reminders.</li>
+      <li>Once you think you've created the correct Bohr Model click the highlighted element again to see the correct version.</li>
+      <li>Compare your work to the card's model.</li>
+      <li><strong>Click this box to close.</strong></li>
+    </ul>
+  </div>
+  <div id="game-area"></div>
+  <script>
+    const game = document.getElementById('game-area');
+    const centerX = window.innerWidth / 2 - 150 + 25;
+    const centerY = window.innerHeight / 2;
+
+    const nucleus = document.createElement('div');
+    nucleus.className = 'circle nucleus';
+    nucleus.style.width = '200px';
+    nucleus.style.height = '200px';
+    nucleus.style.left = `${centerX - 100}px`;
+    nucleus.style.top = `${centerY - 100}px`;
+    game.appendChild(nucleus);
+
+    const createRing = (radius, color = 'black') => {
+      const ring = document.createElement('div');
+      ring.className = 'circle';
+      ring.style.borderColor = color;
+      ring.style.width = `${radius * 2}px`;
+      ring.style.height = `${radius * 2}px`;
+      ring.style.left = `${centerX - radius}px`;
+      ring.style.top = `${centerY - radius}px`;
+      game.appendChild(ring);
+      return ring;
+    };
+
+    const ring1 = createRing(150);
+    const ring2 = createRing(210);
+    const ring3 = createRing(270);
+
+// Add ghost indicators
+const createGhosts = (circle, positions, numbers = []) => {
+  const cx = circle.offsetLeft + circle.offsetWidth / 2;
+  const cy = circle.offsetTop + circle.offsetHeight / 2;
+  positions.forEach(([dx, dy], index) => {
+    const ghost = document.createElement('div');
+    ghost.className = 'dot electron';
+    ghost.style.opacity = '0.075';
+    ghost.style.position = 'absolute';
+    ghost.style.left = `${cx + dx - 10}px`;
+    ghost.style.top = `${cy + dy - 10}px`;
+    game.appendChild(ghost);
+
+    if (numbers[index] !== undefined) {
+      const label = document.createElement('div');
+      label.textContent = numbers[index];
+      label.style.position = 'absolute';
+      label.style.left = `${cx + dx + 10}px`; // position slightly right of ghost
+      label.style.top = `${cy + dy - 10}px`;  // align vertically
+      label.style.fontSize = '14px';
+      label.style.color = 'rgba(0, 0, 255, 0.6)';
+      label.style.fontWeight = 'bold';
+      label.style.userSelect = 'none';
+      game.appendChild(label);
+    }
+  });
+};
+
+
+createGhosts(ring1, [[0, -150], [0, 150]], [1, 2]);
+createGhosts(ring2, [
+  [Math.cos((-90 - 6) * Math.PI / 180) * 210, Math.sin((-90 - 6) * Math.PI / 180) * 210],
+  [Math.cos((0 - 6) * Math.PI / 180) * 210, Math.sin((0 - 6) * Math.PI / 180) * 210],
+  [Math.cos((90 - 6) * Math.PI / 180) * 210, Math.sin((90 - 6) * Math.PI / 180) * 210],
+  [Math.cos((180 - 6) * Math.PI / 180) * 210, Math.sin((180 - 6) * Math.PI / 180) * 210],
+  [Math.cos((-90 + 6) * Math.PI / 180) * 210, Math.sin((-90 + 6) * Math.PI / 180) * 210],
+  [Math.cos((0 + 6) * Math.PI / 180) * 210, Math.sin((0 + 6) * Math.PI / 180) * 210],
+  [Math.cos((90 + 6) * Math.PI / 180) * 210, Math.sin((90 + 6) * Math.PI / 180) * 210],
+  [Math.cos((180 + 6) * Math.PI / 180) * 210, Math.sin((180 + 6) * Math.PI / 180) * 210]
+], [3, 4, 5, 6, 7, 8, 9, 10]);
+createGhosts(ring3, [
+  [Math.cos((-90 - 6) * Math.PI / 180) * 270, Math.sin((-90 - 6) * Math.PI / 180) * 270],
+  [Math.cos((0 - 6) * Math.PI / 180) * 270, Math.sin((0 - 6) * Math.PI / 180) * 270],
+  [Math.cos((90 - 6) * Math.PI / 180) * 270, Math.sin((90 - 6) * Math.PI / 180) * 270],
+  [Math.cos((180 - 6) * Math.PI / 180) * 270, Math.sin((180 - 6) * Math.PI / 180) * 270],
+  [Math.cos((-90 + 6) * Math.PI / 180) * 270, Math.sin((-90 + 6) * Math.PI / 180) * 270],
+  [Math.cos((0 + 6) * Math.PI / 180) * 270, Math.sin((0 + 6) * Math.PI / 180) * 270],
+  [Math.cos((90 + 6) * Math.PI / 180) * 270, Math.sin((90 + 6) * Math.PI / 180) * 270],
+  [Math.cos((180 + 6) * Math.PI / 180) * 270, Math.sin((180 + 6) * Math.PI / 180) * 270]
+], [11, 12, 13, 14, 15, 16, 17, 18, 19, 20]);
+
+    const createTray = (x, y, color, type) => {
+      const tray = document.createElement('div');
+      tray.className = 'tray';
+      tray.style.left = `${x}px`;
+      tray.style.top = `${y}px`;
+      tray.innerHTML = `<div class='label' style='color:${color}'>${type}</div>`;
+      const dotContainer = document.createElement('div');
+      dotContainer.className = 'dot-container';
+      tray.appendChild(dotContainer);
+      game.appendChild(tray);
+      return dotContainer;
+    };
+
+    const protonTray = createTray(20, 30, 'red', 'Protons');
+
+// Create 'Quick Add' button next to proton tray
+const quickAddBtn = document.createElement('button');
+quickAddBtn.innerHTML = 'Quick<br>Add';
+quickAddBtn.style.position = 'absolute';
+quickAddBtn.style.left = '130px';
+quickAddBtn.style.top = '35px';
+quickAddBtn.style.backgroundColor = 'red';
+quickAddBtn.style.color = 'white';
+quickAddBtn.style.border = 'none';
+quickAddBtn.style.padding = '4px 6px';
+quickAddBtn.style.cursor = 'pointer';
+quickAddBtn.style.fontWeight = 'bold';
+quickAddBtn.style.fontSize = '12px';
+quickAddBtn.style.borderRadius = '4px';
+game.appendChild(quickAddBtn);
+
+quickAddBtn.addEventListener('click', () => {
+  if (modelLocked) return;
+  const dot = document.createElement('div');
+  dot.className = 'dot proton';
+  dot.style.position = 'absolute';
+  const bounds = nucleus.getBoundingClientRect();
+  const cx = bounds.left + bounds.width / 2;
+  const cy = bounds.top + bounds.height / 2;
+  const x = cx + (Math.random() - 0.5) * 80;
+  const y = cy + (Math.random() - 0.5) * 80;
+  dot.style.left = `${x - 10}px`;
+  dot.style.top = `${y - 10}px`;
+  dot.style.zIndex = 1;
+  game.appendChild(dot);
+  particles.push({ el: dot, type: 'proton', home: protonTray });
+});
+    const neutronTray = createTray(20, 190, 'black', 'Neutrons');
+
+// Create 'Quick Add' button next to neutron tray
+const quickAddNeutronBtn = document.createElement('button');
+quickAddNeutronBtn.innerHTML = 'Quick<br>Add';
+quickAddNeutronBtn.style.position = 'absolute';
+quickAddNeutronBtn.style.left = '130px';
+quickAddNeutronBtn.style.top = '195px';
+quickAddNeutronBtn.style.backgroundColor = 'white';
+quickAddNeutronBtn.style.color = 'black';
+quickAddNeutronBtn.style.border = '2px solid black';
+quickAddNeutronBtn.style.padding = '4px 6px';
+quickAddNeutronBtn.style.cursor = 'pointer';
+quickAddNeutronBtn.style.fontWeight = 'bold';
+quickAddNeutronBtn.style.fontSize = '12px';
+quickAddNeutronBtn.style.borderRadius = '4px';
+game.appendChild(quickAddNeutronBtn);
+
+quickAddNeutronBtn.addEventListener('click', () => {
+  if (modelLocked) return;
+  const dot = document.createElement('div');
+  dot.className = 'dot neutron';
+  dot.style.position = 'absolute';
+  const bounds = nucleus.getBoundingClientRect();
+  const cx = bounds.left + bounds.width / 2;
+  const cy = bounds.top + bounds.height / 2;
+  const x = cx + (Math.random() - 0.5) * 80;
+  const y = cy + (Math.random() - 0.5) * 80;
+  dot.style.left = `${x - 8}px`;
+  dot.style.top = `${y - 8}px`;
+  dot.style.zIndex = 1;
+  game.appendChild(dot);
+  particles.push({ el: dot, type: 'neutron', home: neutronTray });
+});
+    const electronTray = createTray(20, 350, 'blue', 'Electrons');
+
+// Add Drag and Drop Only label
+const electronNote = document.createElement('div');
+electronNote.innerHTML = 'Drag and Drop<br>Only';
+electronNote.style.position = 'absolute';
+electronNote.style.left = '20px';
+electronNote.style.top = '515px';
+electronNote.style.color = 'blue';
+electronNote.style.fontWeight = 'bold';
+electronNote.style.textAlign = 'center';
+game.appendChild(electronNote);
+
+    const elements = [
+      ['H', 'Hydrogen', [1]], ['He', 'Helium', [2]], ['Li', 'Lithium', [2, 1]],
+      ['Be', 'Beryllium', [2, 2]], ['B', 'Boron', [2, 3]], ['C', 'Carbon', [2, 4]],
+      ['N', 'Nitrogen', [2, 5]], ['O', 'Oxygen', [2, 6]], ['F', 'Fluorine', [2, 7]], ['Ne', 'Neon', [2, 8]],
+      ['Na', 'Sodium', [2, 8, 1]], ['Mg', 'Magnesium', [2, 8, 2]], ['Al', 'Aluminum', [2, 8, 3]],
+      ['Si', 'Silicon', [2, 8, 4]], ['P', 'Phosphorus', [2, 8, 5]], ['S', 'Sulfur', [2, 8, 6]],
+      ['Cl', 'Chlorine', [2, 8, 7]], ['Ar', 'Argon', [2, 8, 8]], ['K', 'Potassium', [2, 8, 8, 1]], ['Ca', 'Calcium', [2, 8, 8, 2]]
+    ];
+
+    const columnOffsets = [80, 180, 280, 380];
+    const rowsPerColumn = [5, 5, 5, 5];
+    let modelLocked = false;
+let highlightedCard = null;
+    let particles = [];
+
+    const createDot = (type, tray) => {
+      const dot = document.createElement('div');
+      dot.className = `dot ${type}`;
+      tray.appendChild(dot);
+      particles.push({ el: dot, type, home: tray });
+    };
+
+    for (let i = 0; i < 20; i++) {
+      createDot('proton', protonTray);
+      createDot('neutron', neutronTray);
+      createDot('electron', electronTray);
+    }
+
+    let cardIndex = 0;
+    for (let col = 0; col < 3; col++) {
+      for (let row = 0; row < rowsPerColumn[col]; row++) {
+        if (cardIndex >= elements.length) break;
+        const [symbol, name, shells] = elements[cardIndex];
+        const card = document.createElement('div');
+        card.className = 'element-card';
+        card.style.top = `${50 + row * 80}px`;
+        card.style.right = `${columnOffsets[col]}px`;
+        card.innerHTML = `${symbol}<br>${name}<br>Atomic #${cardIndex + 1}`;
+
+        card.addEventListener('click', () => {
+  if (card.classList.contains('card-zoomed')) {
+    card.classList.remove('card-flipped', 'card-zoomed');
+    highlightedCard = null;
+    card.innerHTML = `${symbol}<br>${name}<br>Atomic #${cardIndex + 1}`;
+    modelLocked = false;
+    particles.forEach(p => {
+      p.el.style.position = 'static';
+      p.el.style.left = null;
+      p.el.style.top = null;
+      p.el.style.zIndex = 1;
+      p.home.appendChild(p.el);
+    });
+    return;
+  }
+  if (modelLocked) return;
+  if (highlightedCard && highlightedCard !== card) {
+    highlightedCard.classList.remove('card-highlighted');
+    highlightedCard = null;
+  }
+  if (!card.classList.contains('card-highlighted')) {
+    card.classList.add('card-highlighted');
+    highlightedCard = card;
+    return;
+  }
+  card.classList.remove('card-highlighted');
+  highlightedCard = null;
+          if (card.classList.contains('card-zoomed')) {
+            card.classList.remove('card-flipped', 'card-zoomed');
+highlightedCard = null;
+            card.innerHTML = `${symbol}<br>${name}<br>Atomic #${cardIndex + 1}`;
+            modelLocked = false;
+            particles.forEach(p => {
+              p.el.style.position = 'static';
+              p.el.style.left = null;
+              p.el.style.top = null;
+              p.el.style.zIndex = 1;
+              p.home.appendChild(p.el);
+            });
+            return;
+          }
+          if (document.querySelector('.card-zoomed')) return;
+          if (!card.classList.contains('card-flipped')) {
+            card.classList.add('card-flipped', 'card-zoomed');
+            let svg = `<svg width='100%' height='100%' viewBox='-10 -10 120 120' style='background:white;'>`;
+            shells.forEach((_, shellIndex) => {
+              const r = 30 + shellIndex * 10;
+              svg += `<circle cx='50' cy='50' r='${r}' stroke='black' stroke-width='1' fill='none' />`;
+            });
+            svg += `<circle cx='50' cy='50' r='18' fill='red' />`;
+            svg += `<text x='50' y='48' font-size='6' text-anchor='middle' fill='white'>P=${shells.reduce((a,b)=>a+b,0)}</text>`;
+            svg += `<text x='50' y='58' font-size='6' text-anchor='middle' fill='white'>N=${shells.reduce((a,b)=>a+b,0)}</text>`;
+            shells.forEach((count, shellIndex) => {
+              const r = 30 + shellIndex * 10;
+              const positions = shellIndex === 0
+                ? [[0, -r], [0, r]]
+                : [
+                    [Math.cos((-90 - 5) * Math.PI / 180) * r, Math.sin((-90 - 5) * Math.PI / 180) * r],
+                    [Math.cos((0 - 5) * Math.PI / 180) * r, Math.sin((0 - 5) * Math.PI / 180) * r],
+                    [Math.cos((90 - 5) * Math.PI / 180) * r, Math.sin((90 - 5) * Math.PI / 180) * r],
+                    [Math.cos((180 - 5) * Math.PI / 180) * r, Math.sin((180 - 5) * Math.PI / 180) * r],
+                    [Math.cos((-90 + 5) * Math.PI / 180) * r, Math.sin((-90 + 5) * Math.PI / 180) * r],
+                    [Math.cos((0 + 5) * Math.PI / 180) * r, Math.sin((0 + 5) * Math.PI / 180) * r],
+                    [Math.cos((90 + 5) * Math.PI / 180) * r, Math.sin((90 + 5) * Math.PI / 180) * r],
+                    [Math.cos((180 + 5) * Math.PI / 180) * r, Math.sin((180 + 5) * Math.PI / 180) * r]
+                  ];
+              positions.slice(0, count).forEach(([dx, dy]) => {
+                const x = 50 + dx;
+                const y = 50 + dy;
+                svg += `<circle cx='${x.toFixed(1)}' cy='${y.toFixed(1)}' r='3' fill='blue' />`;
+              });
+            });
+            svg += `</svg>`;
+            card.innerHTML = svg;
+            modelLocked = true;
+          } else {
+            card.classList.remove('card-flipped', 'card-zoomed');
+            card.innerHTML = `${symbol}<br>${name}`;
+            modelLocked = false;
+            particles.forEach(p => {
+              p.el.style.position = 'static';
+              p.el.style.left = null;
+              p.el.style.top = null;
+              p.el.style.zIndex = 1;
+              p.home.appendChild(p.el);
+            });
+          }
+        });
+
+        game.appendChild(card);
+        cardIndex++;
+      }
+    }
+
+    let dragging = null;
+const occupiedSpots = new Set();
+    let offsetX = 0;
+    let offsetY = 0;
+    game.addEventListener('mousedown', (e) => {
+      if (e.target.classList.contains('dot') && !modelLocked) {
+        dragging = e.target;
+        offsetX = e.offsetX;
+        offsetY = e.offsetY;
+        dragging.style.zIndex = 1000;
+        dragging.style.position = 'absolute';
+        game.appendChild(dragging);
+      }
+    });
+
+    game.addEventListener('mousemove', (e) => {
+      if (!dragging) return;
+      dragging.style.left = `${e.pageX - offsetX}px`;
+      dragging.style.top = `${e.pageY - offsetY}px`;
+    });
+
+    window.addEventListener('mouseup', () => {
+      if (!dragging) return;
+      const bounds = nucleus.getBoundingClientRect();
+      const x = parseInt(dragging.style.left || 0) + 10;
+      const y = parseInt(dragging.style.top || 0) + 10;
+      if (dragging.classList.contains('proton') || dragging.classList.contains('neutron')) {
+        if (x > bounds.left && x < bounds.right && y > bounds.top && y < bounds.bottom) {
+          // Check for overlap with existing protons/neutrons
+          const newCenterX = x;
+          const newCenterY = y;
+          let overlapping = false;
+          particles.forEach(p => {
+            if ((dragging.classList.contains('proton') || dragging.classList.contains('neutron')) &&
+                (p.el !== dragging && (p.type === 'proton' || p.type === 'neutron'))) {
+              const rect = p.el.getBoundingClientRect();
+              const existingX = rect.left + rect.width / 2;
+              const existingY = rect.top + rect.height / 2;
+              const dist = Math.hypot(existingX - newCenterX, existingY - newCenterY);
+              if (dist < 18) overlapping = true; // less than 90% clear
+            }
+          });
+          if (!overlapping) {
+            // Valid placement inside nucleus
+            dragging.style.left = `${x - 10}px`;
+            dragging.style.top = `${y - 10}px`;
+          } else {
+            // Too close to another particle
+            dragging.style.position = 'static';
+            dragging.style.left = null;
+            dragging.style.top = null;
+            const particle = particles.find(p => p.el === dragging);
+            if (particle) particle.home.appendChild(dragging);
+            const prevKey = dragging.getAttribute('data-spot');
+            if (prevKey) occupiedSpots.delete(prevKey);
+            dragging.removeAttribute('data-spot');
+            dragging = null;
+            return;
+          }
+        } else {
+          dragging.style.position = 'static';
+          dragging.style.left = null;
+          dragging.style.top = null;
+          const particle = particles.find(p => p.el === dragging);
+          if (particle) particle.home.appendChild(dragging);
+const prevKey = dragging.getAttribute('data-spot');
+if (prevKey) occupiedSpots.delete(prevKey);
+dragging.removeAttribute('data-spot');
+        }
+      } else if (dragging.classList.contains('electron')) {
+        const snapTo = (circle, positions) => {
+  const cx = circle.offsetLeft + circle.offsetWidth / 2;
+  const cy = circle.offsetTop + circle.offsetHeight / 2;
+  for (const [dx, dy] of positions) {
+    const tx = cx + dx - 10;
+    const ty = cy + dy - 10;
+    const key = `${Math.round(tx)}-${Math.round(ty)}`;
+    if (occupiedSpots.has(key)) continue;
+    if (Math.abs(x - tx) < 40 && Math.abs(y - ty) < 40) {
+      dragging.style.left = `${tx}px`;
+      dragging.style.top = `${ty}px`;
+      occupiedSpots.add(key);
+      dragging.setAttribute('data-spot', key);
+      return true;
+    }
+  }
+  return false;
+};
+
+        const success =
+          snapTo(ring1, [[0, -150], [0, 150]]) ||
+          snapTo(ring2, [
+            [Math.cos((-90 - 6) * Math.PI / 180) * 210, Math.sin((-90 - 6) * Math.PI / 180) * 210],
+            [Math.cos((0 - 6) * Math.PI / 180) * 210, Math.sin((0 - 6) * Math.PI / 180) * 210],
+            [Math.cos((90 - 6) * Math.PI / 180) * 210, Math.sin((90 - 6) * Math.PI / 180) * 210],
+            [Math.cos((180 - 6) * Math.PI / 180) * 210, Math.sin((180 - 6) * Math.PI / 180) * 210],
+            [Math.cos((-90 + 6) * Math.PI / 180) * 210, Math.sin((-90 + 6) * Math.PI / 180) * 210],
+            [Math.cos((0 + 6) * Math.PI / 180) * 210, Math.sin((0 + 6) * Math.PI / 180) * 210],
+            [Math.cos((90 + 6) * Math.PI / 180) * 210, Math.sin((90 + 6) * Math.PI / 180) * 210],
+            [Math.cos((180 + 6) * Math.PI / 180) * 210, Math.sin((180 + 6) * Math.PI / 180) * 210]
+          ]) ||
+          snapTo(ring3, [
+            [Math.cos((-90 - 6) * Math.PI / 180) * 270, Math.sin((-90 - 6) * Math.PI / 180) * 270],
+            [Math.cos((0 - 6) * Math.PI / 180) * 270, Math.sin((0 - 6) * Math.PI / 180) * 270],
+            [Math.cos((90 - 6) * Math.PI / 180) * 270, Math.sin((90 - 6) * Math.PI / 180) * 270],
+            [Math.cos((180 - 6) * Math.PI / 180) * 270, Math.sin((180 - 6) * Math.PI / 180) * 270],
+            [Math.cos((-90 + 6) * Math.PI / 180) * 270, Math.sin((-90 + 6) * Math.PI / 180) * 270],
+            [Math.cos((0 + 6) * Math.PI / 180) * 270, Math.sin((0 + 6) * Math.PI / 180) * 270],
+            [Math.cos((90 + 6) * Math.PI / 180) * 270, Math.sin((90 + 6) * Math.PI / 180) * 270],
+            [Math.cos((180 + 6) * Math.PI / 180) * 270, Math.sin((180 + 6) * Math.PI / 180) * 270]
+          ]);
+
+        if (!success) {
+          dragging.style.position = 'static';
+          dragging.style.left = null;
+          dragging.style.top = null;
+          const particle = particles.find(p => p.el === dragging);
+          if (particle) particle.home.appendChild(dragging);
+        }
+      }
+      dragging.style.zIndex = 1;
+      dragging = null;
+    });
+  document.getElementById('instructions-toggle').addEventListener('click', () => {
+  const box = document.getElementById('instructions-box');
+  box.style.display = box.style.display === 'block' ? 'none' : 'block';
+});
+
+document.getElementById('instructions-box').addEventListener('click', () => {
+  document.getElementById('instructions-box').style.display = 'none';
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Elastic Potential Energy Calculator</title>
+    <style>
+      body {
+        font-family: "Times New Roman", Times, serif;
+        text-align: center;
+        margin: 50px;
+        background-color: #f4f4f4;
+      }
+      .container {
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        max-width: 500px;
+        margin: auto;
+      }
+      input {
+        width: 80px;
+        padding: 5px;
+        font-size: 16px;
+        text-align: center;
+      }
+      button {
+        margin-top: 10px;
+        padding: 10px 20px;
+        font-size: 16px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+      button:hover {
+        background-color: #0056b3;
+      }
+      .result {
+        font-size: 18px;
+        font-weight: bold;
+        margin-top: 15px;
+      }
+      .math-steps {
+        text-align: left;
+        margin-top: 15px;
+        font-size: 16px;
+        background: #eaf2ff;
+        padding: 10px;
+        border-radius: 5px;
+        display: none; /* Hidden until calculation is done */
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>Elastic Potential Energy Calculator</h2>
+      <label for="kValue">Elasticity (k):</label>
+      <input type="number" id="kValue" placeholder="Enter k" />
+      <br /><br />
+      <label for="xValue">Stretch (x):</label>
+      <input type="number" id="xValue" placeholder="Enter x" />
+      <br /><br />
+      <button onclick="calculateEnergy()">Calculate</button>
+      <p class="result" id="result">
+        Elastic Potential Energy (E<sub>pe</sub>): -- J
+      </p>
+
+      <!-- Math Steps Section -->
+      <div class="math-steps" id="mathSteps"></div>
+    </div>
+
+    <script>
+      function calculateEnergy() {
+        let k = parseFloat(document.getElementById("kValue").value);
+        let x = parseFloat(document.getElementById("xValue").value);
+
+        if (isNaN(k) || isNaN(x)) {
+          document.getElementById("result").textContent =
+            "Please enter valid numbers.";
+          document.getElementById("mathSteps").style.display = "none";
+          return;
+        }
+
+        let xSquared = x * x; // Calculate x^2 first
+        let halfK = (1 / 2) * k; // Explicit step: multiply k by 1/2
+        let energy = halfK * xSquared; // Final multiplication step
+
+        // Display the result
+        document.getElementById(
+          "result"
+        ).textContent = `Elastic Potential Energy (Epe): ${energy.toFixed(
+          2
+        )} J`;
+
+        // Show the step-by-step math work
+        let mathSteps = `
+                <p><strong>Formula:</strong> E<sub>pe</sub> = 1/2 k x<sup>2</sup></p>
+                <p><strong>Step 1:</strong> Substitute values: E<sub>pe</sub> = (1/2)(${k})(${x}<sup>2</sup>)</p>
+                <p><strong>Step 2:</strong> Square the stretch value: x<sup>2</sup> = ${xSquared}</p>
+                <p><strong>Step 3:</strong> Multiply elasticity by 1/2: (1/2) × ${k} = ${halfK}</p>
+                <p><strong>Step 4:</strong> Multiply by squared stretch value: ${halfK} × ${xSquared} = ${energy.toFixed(
+          2
+        )} J</p>
+            `;
+
+        document.getElementById("mathSteps").innerHTML = mathSteps;
+        document.getElementById("mathSteps").style.display = "block"; // Show steps
+      }
+    </script>
+  </body>
+</html>
