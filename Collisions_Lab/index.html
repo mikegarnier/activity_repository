@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cart Collision Velocity Graph Activity</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: Arial, sans-serif;
+      background: #f2f2f2;
+      margin: 0;
+      padding: 20px;
+      color: #111;
+    }
+    .wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    h1 {
+      text-align: center;
+      margin: 0 0 18px;
+      font-size: 32px;
+    }
+    .panel {
+      background: white;
+      border: 3px solid #222;
+      padding: 14px;
+      margin-bottom: 18px;
+    }
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    .readout {
+      min-width: 300px;
+      font-size: 20px;
+      line-height: 1.5;
+    }
+    .speedRow {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+    .speedCard {
+      border: 2px solid #222;
+      background: #fafafa;
+      padding: 10px 14px;
+      min-width: 150px;
+    }
+    .speedTitle {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+    .speedValue {
+      font-size: 28px;
+      font-weight: bold;
+    }
+    .controls {
+      display: flex;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 10px;
+      max-width: 440px;
+    }
+    .massPanel {
+      width: 100%;
+      border: 2px solid #222;
+      background: #fafafa;
+      padding: 10px 12px;
+      margin-top: 4px;
+    }
+    .massRow {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      font-size: 18px;
+      margin-top: 6px;
+    }
+    .massRow:first-child {
+      margin-top: 0;
+    }
+    .massLabel {
+      font-weight: bold;
+    }
+    label {
+      font-size: 18px;
+    }
+    select, button {
+      font-size: 18px;
+      padding: 8px 12px;
+    }
+    button {
+      cursor: pointer;
+    }
+    .simArea {
+      position: relative;
+      height: 260px;
+      border-top: 3px solid #222;
+      border-bottom: 3px solid #222;
+      margin-top: 10px;
+      background: #fafafa;
+      overflow: hidden;
+    }
+    .trackLine {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 30px;
+      height: 4px;
+      background: #222;
+    }
+    .cart {
+      position: absolute;
+      width: 110px;
+      height: 60px;
+      border: 3px solid #222;
+      bottom: 34px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      font-weight: bold;
+      background: #ddd;
+    }
+    .cart1 { background: #dce8ff; }
+    .cart2 { background: #ffe1ec; }
+    .wheel {
+      position: absolute;
+      width: 22px;
+      height: 22px;
+      border: 3px solid #222;
+      border-radius: 50%;
+      background: white;
+      bottom: -14px;
+    }
+    .wheel.left { left: 14px; }
+    .wheel.right { right: 14px; }
+    .cartLabel {
+      position: absolute;
+      top: -34px;
+      width: 100%;
+      text-align: center;
+      font-size: 24px;
+      font-weight: bold;
+    }
+    .legend {
+      display: flex;
+      gap: 24px;
+      align-items: center;
+      margin-top: 8px;
+      flex-wrap: wrap;
+      font-size: 18px;
+    }
+    .key {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .swatch {
+      width: 26px;
+      height: 4px;
+      display: inline-block;
+    }
+    .blue { background: #3757d6; }
+    .pink { background: #e64f83; }
+    .graphPanel {
+      background: white;
+      border: 3px solid #222;
+      padding: 14px;
+    }
+    canvas {
+      width: 100%;
+      height: auto;
+      display: block;
+      background: #fff;
+      border: 1px solid #999;
+    }
+    .caption {
+      margin-top: 10px;
+      font-size: 17px;
+      line-height: 1.4;
+    }
+    .note {
+      margin-top: 6px;
+      font-size: 16px;
+      color: #444;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Cart Collision Velocity Graph</h1>
+
+    <div class="panel">
+      <div class="topbar">
+        <div class="readout" id="readout">
+          <div><strong>Current speedometers</strong></div>
+          <div class="speedRow">
+            <div class="speedCard">
+              <div class="speedTitle">Cart 1</div>
+              <div class="speedValue"><span id="cart1Speed">0.60</span> m/s</div>
+            </div>
+            <div class="speedCard">
+              <div class="speedTitle">Cart 2</div>
+              <div class="speedValue"><span id="cart2Speed">0.00</span> m/s</div>
+            </div>
+          </div>
+          <div style="margin-top:8px;"><strong>Collision type:</strong> <span id="collisionLabel">Perfectly Elastic</span></div>
+        </div>
+
+        <div class="controls">
+          <label for="modeSelect">Mode:</label>
+          <select id="modeSelect">
+            <option value="elastic">Perfectly Elastic</option>
+            <option value="sticky">Sticky (Perfectly Inelastic)</option>
+          </select>
+          <button id="startBtn">Start Collision</button>
+          <button id="resetBtn">Reset</button>
+
+          <div class="massPanel">
+            <div class="massRow">
+              <span class="massLabel">Cart 1 Mass:</span>
+              <span id="cart1MassDisplay">1.0 kg</span>
+            </div>
+            <div class="massRow">
+              <span class="massLabel">Cart 2 Mass:</span>
+              <span id="cart2MassDisplay">1.0 kg</span>
+              <button id="increaseMassBtn" type="button">Extra 0.5 kg: OFF</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="simArea" id="simArea">
+        <div class="trackLine"></div>
+        <div class="cart cart1" id="cart1">
+          <div class="cartLabel">Cart 1</div>
+          <div class="wheel left"></div>
+          <div class="wheel right"></div>
+        </div>
+        <div class="cart cart2" id="cart2">
+          <div class="cartLabel">Cart 2</div>
+          <div class="wheel left"></div>
+          <div class="wheel right"></div>
+        </div>
+      </div>
+
+      <div class="legend">
+        <span class="key"><span class="swatch blue"></span> Cart 1 velocity</span>
+        <span class="key"><span class="swatch pink"></span> Cart 2 velocity</span>
+      </div>
+      <div class="note">The graph shows about 1 second before collision, the collision itself, and about 1 second after collision.</div>
+    </div>
+
+    <div class="graphPanel">
+      <canvas id="graph" width="1040" height="460"></canvas>
+      <div class="caption" id="captionText">
+        In a perfectly elastic collision with equal masses, the moving cart stops and the stationary cart takes off with nearly the same speed.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const modeSelect = document.getElementById('modeSelect');
+    const startBtn = document.getElementById('startBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const cart1 = document.getElementById('cart1');
+    const cart2 = document.getElementById('cart2');
+    const simArea = document.getElementById('simArea');
+    const graph = document.getElementById('graph');
+    const ctx = graph.getContext('2d');
+    const collisionLabel = document.getElementById('collisionLabel');
+    const captionText = document.getElementById('captionText');
+    const cart1SpeedEl = document.getElementById('cart1Speed');
+    const cart2SpeedEl = document.getElementById('cart2Speed');
+    const cart1MassDisplay = document.getElementById('cart1MassDisplay');
+    const cart2MassDisplay = document.getElementById('cart2MassDisplay');
+    const increaseMassBtn = document.getElementById('increaseMassBtn');
+
+    const W = graph.width;
+    const H = graph.height;
+    const padL = 72;
+    const padR = 24;
+    const padT = 24;
+    const padB = 60;
+
+    let animationId = null;
+    let running = false;
+    let t0 = null;
+
+    const totalTime = 3.0;
+    const collisionTime = 1.5;
+    const blend = 0.08;
+
+    const x1Initial = 80;
+    const x2Initial = 430;
+    const cartWidth = 110;
+    const contactGap = 4;
+    const metersToPixels = 300;
+
+    let cart1Mass = 1.0;
+    let cart2Mass = 1.0;
+
+    const scenarios = {
+      elastic: {
+        name: 'Perfectly Elastic',
+        v1i: 0.60,
+        v2i: 0.00,
+        caption: 'In a perfectly elastic collision, the carts bounce apart while conserving momentum and kinetic energy.'
+      },
+      sticky: {
+        name: 'Sticky (Perfectly Inelastic)',
+        v1i: 0.60,
+        v2i: 0.00,
+        caption: 'In a sticky collision, the carts lock together and move with the same final velocity.'
+      }
+    };
+
+    function smoothStep(a, b, x) {
+      const t = Math.max(0, Math.min(1, (x - a) / (b - a)));
+      return t * t * (3 - 2 * t);
+    }
+
+    function getScenario() {
+      return scenarios[modeSelect.value];
+    }
+
+    function velocityAtTime(t, cartNum) {
+      const s = getScenario();
+
+      let v1BeforeCollision;
+      if (t < 0.35) {
+        const startMix = smoothStep(0, 0.35, t);
+        v1BeforeCollision = s.v1i * startMix;
+      } else {
+        v1BeforeCollision = s.v1i;
+      }
+
+      let v1f;
+      let v2f;
+
+      if (modeSelect.value === 'elastic') {
+        v1f = ((cart1Mass - cart2Mass) / (cart1Mass + cart2Mass)) * s.v1i;
+        v2f = ((2 * cart1Mass) / (cart1Mass + cart2Mass)) * s.v1i;
+      } else {
+        const sharedV = (cart1Mass * s.v1i) / (cart1Mass + cart2Mass);
+        v1f = sharedV;
+        v2f = sharedV;
+      }
+
+      if (cartNum === 1) {
+        const collisionMix = smoothStep(collisionTime - blend, collisionTime + blend, t);
+        return v1BeforeCollision + (v1f - v1BeforeCollision) * collisionMix;
+      }
+
+      if (cartNum === 2) {
+        const collisionMix = smoothStep(collisionTime - blend, collisionTime + blend, t);
+        return s.v2i + (v2f - s.v2i) * collisionMix;
+      }
+
+      return 0;
+    }
+
+    function updateReadout() {
+      const s = getScenario();
+      collisionLabel.textContent = s.name;
+      captionText.textContent = s.caption;
+      cart1SpeedEl.textContent = '0.00';
+      cart2SpeedEl.textContent = '0.00';
+      cart1MassDisplay.textContent = `${cart1Mass.toFixed(1)} kg`;
+      cart2MassDisplay.textContent = `${cart2Mass.toFixed(1)} kg`;
+    }
+
+    let lastV1 = null;
+    let lastV2 = null;
+
+    function updateSpeedometers(t) {
+      const v1 = Math.abs(velocityAtTime(t, 1));
+      const v2 = Math.abs(velocityAtTime(t, 2));
+
+      // round first so the display only changes when the visible value changes
+      const v1Rounded = Number(v1.toFixed(2));
+      const v2Rounded = Number(v2.toFixed(2));
+
+      // only update DOM if the number actually changed (prevents flicker)
+      if (v1Rounded !== lastV1) {
+        cart1SpeedEl.textContent = v1Rounded.toFixed(2);
+        lastV1 = v1Rounded;
+      }
+
+      if (v2Rounded !== lastV2) {
+        cart2SpeedEl.textContent = v2Rounded.toFixed(2);
+        lastV2 = v2Rounded;
+      }
+    }
+
+    function positionCartsAtStart() {
+      cart1.style.left = `${x1Initial}px`;
+      cart2.style.left = `${x2Initial}px`;
+    }
+
+    function drawAxes() {
+      ctx.clearRect(0, 0, W, H);
+
+      const xMin = 0;
+      const xMax = totalTime;
+      const yMin = -0.2;
+      const yMax = 0.8;
+
+      const xToPx = x => padL + (x - xMin) / (xMax - xMin) * (W - padL - padR);
+      const yToPx = y => H - padB - (y - yMin) / (yMax - yMin) * (H - padT - padB);
+
+      ctx.strokeStyle = '#d0d0d0';
+      ctx.lineWidth = 1;
+
+      for (let xt = 0; xt <= xMax + 0.001; xt += 0.5) {
+        const x = xToPx(xt);
+        ctx.beginPath();
+        ctx.moveTo(x, padT);
+        ctx.lineTo(x, H - padB);
+        ctx.stroke();
+
+        ctx.fillStyle = '#111';
+        ctx.font = '14px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(xt.toFixed(1), x, H - padB + 20);
+      }
+
+      for (let yt = yMin; yt <= yMax + 0.001; yt += 0.1) {
+        const y = yToPx(yt);
+        ctx.beginPath();
+        ctx.moveTo(padL, y);
+        ctx.lineTo(W - padR, y);
+        ctx.stroke();
+
+        ctx.fillStyle = '#111';
+        ctx.font = '14px Arial';
+        ctx.textAlign = 'right';
+        ctx.fillText(yt.toFixed(1), padL - 8, y + 4);
+      }
+
+      ctx.strokeStyle = '#111';
+      ctx.lineWidth = 2;
+
+      ctx.beginPath();
+      ctx.moveTo(padL, yToPx(0));
+      ctx.lineTo(W - padR, yToPx(0));
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(padL, padT);
+      ctx.lineTo(padL, H - padB);
+      ctx.lineTo(W - padR, H - padB);
+      ctx.stroke();
+
+      ctx.fillStyle = '#111';
+      ctx.font = '18px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('Time (s)', W / 2, H - 18);
+
+      ctx.save();
+      ctx.translate(24, H / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillText('Velocity (m/s)', 0, 0);
+      ctx.restore();
+
+      return { xToPx, yToPx };
+    }
+
+    function drawCurves(currentT, xToPx, yToPx) {
+      drawCurve(1, '#3757d6', currentT, xToPx, yToPx);
+      drawCurve(2, '#e64f83', currentT, xToPx, yToPx);
+    }
+
+    function drawCurve(cartNum, color, currentT, xToPx, yToPx) {
+      ctx.beginPath();
+      let first = true;
+
+      const steps = 300;
+      for (let i = 0; i <= steps; i++) {
+        const t = currentT * i / steps;
+        const v = velocityAtTime(t, cartNum);
+        const x = xToPx(t);
+        const y = yToPx(v);
+
+        if (first) {
+          ctx.moveTo(x, y);
+          first = false;
+        } else {
+          ctx.lineTo(x, y);
+        }
+      }
+
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 4;
+      ctx.stroke();
+    }
+
+    function animate(timestamp) {
+      if (!t0) t0 = timestamp;
+
+      const elapsed = (timestamp - t0) / 1000;
+      const t = Math.min(elapsed, totalTime);
+
+      updateSpeedometers(t);
+
+      const axes = drawAxes();
+      drawCurves(t, axes.xToPx, axes.yToPx);
+
+      const dt = 1 / 60;
+      let x1 = x1Initial;
+      let x2 = x2Initial;
+
+      for (let ti = 0; ti < t; ti += dt) {
+        x1 += velocityAtTime(ti, 1) * metersToPixels * dt;
+        x2 += velocityAtTime(ti, 2) * metersToPixels * dt;
+      }
+
+      if (modeSelect.value === 'sticky' && t > collisionTime) {
+        if (x2 - x1 < cartWidth + contactGap) {
+          x2 = x1 + cartWidth + contactGap;
+        }
+      }
+
+      if (modeSelect.value === 'elastic' && t > collisionTime - 0.02 && x2 - x1 < cartWidth + contactGap) {
+        x2 = x1 + cartWidth + contactGap;
+      }
+
+      cart1.style.left = `${x1}px`;
+      cart2.style.left = `${x2}px`;
+
+      if (t < totalTime) {
+        animationId = requestAnimationFrame(animate);
+      } else {
+        running = false;
+        lastV1 = null;
+        lastV2 = null;
+        cart1SpeedEl.textContent = '0.00';
+        cart2SpeedEl.textContent = '0.00';
+      }
+    }
+
+    function startSimulation() {
+      if (running) return;
+      resetSimulation(false);
+      const s = getScenario();
+      lastV1 = null;
+      lastV2 = null;
+      cart1SpeedEl.textContent = s.v1i.toFixed(2);
+      cart2SpeedEl.textContent = s.v2i.toFixed(2);
+      lastV1 = Number(s.v1i.toFixed(2));
+      lastV2 = Number(s.v2i.toFixed(2));
+      running = true;
+      t0 = null;
+      animationId = requestAnimationFrame(animate);
+    }
+
+    function resetSimulation(redraw = true) {
+      if (animationId) cancelAnimationFrame(animationId);
+      animationId = null;
+      running = false;
+      t0 = null;
+      lastV1 = null;
+      lastV2 = null;
+
+      positionCartsAtStart();
+      updateReadout();
+      updateSpeedometers(0);
+
+      if (redraw) {
+        drawAxes();
+      }
+    }
+
+    modeSelect.addEventListener('change', () => resetSimulation(true));
+    startBtn.addEventListener('click', startSimulation);
+    let cart2ExtraMassOn = false;
+
+    increaseMassBtn.addEventListener('click', () => {
+      cart2ExtraMassOn = !cart2ExtraMassOn;
+
+      if (cart2ExtraMassOn) {
+        cart2Mass = 1.5;
+        increaseMassBtn.textContent = 'Extra 0.5 kg: ON';
+      } else {
+        cart2Mass = 1.0;
+        increaseMassBtn.textContent = 'Extra 0.5 kg: OFF';
+      }
+
+      updateReadout();
+      drawAxes();
+    });
+    resetBtn.addEventListener('click', () => resetSimulation(true));
+
+    resetSimulation(true);
+  </script>
+</body>
+</html>
