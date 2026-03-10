@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Constant Force Lab Activity</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: Arial, sans-serif;
+      background: #f2f2f2;
+      margin: 0;
+      padding: 20px;
+      color: #111;
+    }
+    .wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    h1 {
+      text-align: center;
+      margin: 0 0 18px;
+      font-size: 32px;
+    }
+    .panel {
+      background: white;
+      border: 3px solid #222;
+      padding: 14px;
+      margin-bottom: 18px;
+    }
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    .readout {
+      min-width: 300px;
+      font-size: 20px;
+      line-height: 1.5;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .meterRow {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+    .meterCard {
+      border: 2px solid #222;
+      background: #fafafa;
+      padding: 10px 14px;
+      min-width: 240px;
+    }
+    .meterTitle {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+    .meterValue {
+      font-size: 28px;
+      font-weight: bold;
+    }
+    .controls {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      max-width: 520px;
+    }
+    .infoPanel {
+      width: 100%;
+      border: 2px solid #222;
+      background: #fafafa;
+      padding: 10px 12px;
+      margin-top: 4px;
+      font-size: 18px;
+      line-height: 1.5;
+    }
+    .infoRow {
+      margin-top: 4px;
+    }
+    .infoRow:first-child {
+      margin-top: 0;
+    }
+    .infoLabel {
+      font-weight: bold;
+    }
+    label {
+      font-size: 18px;
+    }
+    button {
+      font-size: 18px;
+      padding: 8px 12px;
+      cursor: pointer;
+    }
+    .simArea {
+      position: relative;
+      height: 165px;
+      border-top: 3px solid #222;
+      border-bottom: 3px solid #222;
+      margin-top: 10px;
+      background: #fafafa;
+      overflow: hidden;
+    }
+    .trackLine {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 30px;
+      height: 4px;
+      background: #222;
+    }
+    .cart {
+      position: absolute;
+      width: 110px;
+      height: 60px;
+      border: 3px solid #222;
+      bottom: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      font-weight: bold;
+      background: #dce8ff;
+    }
+    .wheel {
+      position: absolute;
+      width: 22px;
+      height: 22px;
+      border: 3px solid #222;
+      border-radius: 50%;
+      background: white;
+      bottom: -14px;
+    }
+    .wheel.left { left: 14px; }
+    .wheel.right { right: 14px; }
+    .cartLabel {
+      position: absolute;
+      top: -34px;
+      width: 100%;
+      text-align: center;
+      font-size: 24px;
+      font-weight: bold;
+    }
+    .string {
+      position: absolute;
+      height: 3px;
+      background: #444;
+      transform-origin: left center;
+      top: 0;
+      left: 0;
+    }
+    .forceBox {
+      position: absolute;
+      right: 34px;
+      bottom: 42px;
+      width: 170px;
+      height: 100px;
+      border: 3px solid #222;
+      background: #fff0c7;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      font-size: 20px;
+      font-weight: bold;
+      padding: 10px;
+    }
+    .legend {
+      display: flex;
+      gap: 24px;
+      align-items: center;
+      margin-top: 8px;
+      flex-wrap: wrap;
+      font-size: 18px;
+    }
+    .key {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .swatch {
+      width: 26px;
+      height: 4px;
+      display: inline-block;
+    }
+    .green { background: #98b333; }
+    .graphPanel {
+      background: white;
+      border: 3px solid #222;
+      padding: 14px;
+    }
+    canvas {
+      width: 100%;
+      height: auto;
+      display: block;
+      background: #fff;
+      border: 1px solid #999;
+    }
+    .caption {
+      margin-top: 10px;
+      font-size: 17px;
+      line-height: 1.4;
+    }
+    .note {
+      margin-top: 6px;
+      font-size: 16px;
+      color: #444;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Constant Force Acceleration Graph</h1>
+
+    <div class="panel">
+      <div class="topbar">
+        <div class="readout">
+          <div class="meterRow">
+            <div class="meterCard">
+              
+              <div class="meterValue"><span id="accelDisplay">0.00</span> m/s²</div>
+            </div>
+          </div>
+
+          </div>
+
+        <div class="controls">
+          <button id="startBtn">Start Motion</button>
+          <button id="resetBtn">Reset</button>
+
+          <div class="infoPanel">
+            <div class="infoRow"><span class="infoLabel">Cart Mass:</span> <span id="massDisplay">1.0 kg</span></div>
+            <div class="infoRow"><span class="infoLabel">Pulling Force:</span> <span id="forceDisplay">2.5 N</span></div>
+            
+            <div class="infoRow">
+              <button id="decreaseMassBtn">Decrease Mass (-0.5 kg)</button>
+              <button id="increaseMassBtn">Increase Mass (+0.5 kg)</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="simArea" id="simArea">
+        <div class="trackLine"></div>
+        <div class="cart" id="cart">
+          <div class="cartLabel">Cart</div>
+          <div class="wheel left"></div>
+          <div class="wheel right"></div>
+        </div>
+        <div class="string" id="string"></div>
+        <div class="forceBox" id="forceBox">2.5 Newtons<br>of Pulling Force</div>
+      </div>
+
+      
+    </div>
+
+    <div class="graphPanel">
+      <canvas id="graph" width="1040" height="460"></canvas>
+      <div class="caption" id="captionText">
+        The cart speeds up under a constant pulling force, so once it's moving  acceleration stays nearly flat. When the cart hits the box, acceleration goes sharply negative for a brief moment as the cart bounces back, then returns to zero.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const startBtn = document.getElementById('startBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const increaseMassBtn = document.getElementById('increaseMassBtn');
+    const decreaseMassBtn = document.getElementById('decreaseMassBtn');
+    const cart = document.getElementById('cart');
+    const stringEl = document.getElementById('string');
+    const forceBox = document.getElementById('forceBox');
+    const simArea = document.getElementById('simArea');
+    const accelDisplay = document.getElementById('accelDisplay');
+    const massDisplay = document.getElementById('massDisplay');
+    const forceDisplay = document.getElementById('forceDisplay');
+    
+    const graph = document.getElementById('graph');
+    const ctx = graph.getContext('2d');
+
+    const W = graph.width;
+    const H = graph.height;
+    const padL = 72;
+    const padR = 24;
+    const padT = 24;
+    const padB = 60;
+
+    const xInitial = 85;
+    const cartWidth = 110;
+    const contactGap = 6;
+    const metersToPixels = 180;
+    const pullingForce = 2.5;
+    const massLevels = [1.0, 1.5, 2.0, 2.5, 3.0];
+
+    let massIndex = 0;
+    let cartMass = massLevels[massIndex];
+    let animationId = null;
+    let running = false;
+    let t0 = null;
+    let lastA = null;
+    let motionProfile = null;
+
+    function smoothStep(a, b, x) {
+      const t = Math.max(0, Math.min(1, (x - a) / (b - a)));
+      return t * t * (3 - 2 * t);
+    }
+
+    function buildMotionProfile() {
+      const constantAccel = pullingForce / cartMass;
+      const boxLeft = simArea.clientWidth - 34 - 170;
+      const contactX = boxLeft - contactGap - cartWidth;
+      const travelPx = Math.max(40, contactX - xInitial);
+      const travelMeters = travelPx / metersToPixels;
+      const hitTime = Math.sqrt((2 * travelMeters) / constantAccel);
+
+      const rampUpEnd = 0.12;
+      const impactDropEnd = hitTime + 0.09;
+      const reboundEnd = hitTime + 0.28;
+      const settleEnd = hitTime + 0.48;
+      const totalTime = hitTime + 1.0;
+
+      const negPeak = -Math.max(0.38, constantAccel * 0.8);
+      const bounceBackPx = Math.max(10, 24 - massIndex * 3);
+      const yMax = 2.6;
+      const yMin = -2.6;
+
+      return {
+        constantAccel,
+        boxLeft,
+        contactX,
+        hitTime,
+        rampUpEnd,
+        impactDropEnd,
+        reboundEnd,
+        settleEnd,
+        totalTime,
+        negPeak,
+        bounceBackPx,
+        yMax,
+        yMin
+      };
+    }
+
+    function updateDisplays() {
+      motionProfile = buildMotionProfile();
+      massDisplay.textContent = `${cartMass.toFixed(1)} kg`;
+      forceDisplay.textContent = `${pullingForce.toFixed(1)} N`;
+      
+      forceBox.innerHTML = `${pullingForce.toFixed(1)} Newtons<br>of Pulling Force`;
+      increaseMassBtn.disabled = massIndex === massLevels.length - 1;
+      decreaseMassBtn.disabled = massIndex === 0;
+
+      increaseMassBtn.textContent = increaseMassBtn.disabled ? 'Max Mass Reached' : 'Increase Mass (+0.5 kg)';
+      decreaseMassBtn.textContent = decreaseMassBtn.disabled ? 'Min Mass Reached' : 'Decrease Mass (-0.5 kg)';
+    }
+
+    function accelerationAtTime(t) {
+      const p = motionProfile;
+      if (t <= 0) return 0;
+
+      if (t < p.rampUpEnd) {
+        const mix = smoothStep(0, p.rampUpEnd, t);
+        return p.constantAccel * mix;
+      }
+
+      if (t < p.hitTime) {
+        return p.constantAccel;
+      }
+
+      if (t < p.impactDropEnd) {
+        const mix = smoothStep(p.hitTime, p.impactDropEnd, t);
+        return p.constantAccel + (p.negPeak - p.constantAccel) * mix;
+      }
+
+      if (t < p.reboundEnd) {
+        const mix = smoothStep(p.impactDropEnd, p.reboundEnd, t);
+        return p.negPeak + (0 - p.negPeak) * mix;
+      }
+
+      return 0;
+    }
+
+    function positionAtTime(t) {
+      const p = motionProfile;
+
+      if (t <= 0) return xInitial;
+
+      if (t < p.hitTime) {
+        return xInitial + 0.5 * p.constantAccel * t * t * metersToPixels;
+      }
+
+      if (t < p.reboundEnd) {
+        const mix = smoothStep(p.hitTime, p.reboundEnd, t);
+        return p.contactX - p.bounceBackPx * mix;
+      }
+
+      return p.contactX - p.bounceBackPx;
+    }
+
+    function updateAccelerometer(t) {
+      const a = accelerationAtTime(t);
+      const rounded = Number(a.toFixed(2));
+      if (rounded !== lastA) {
+        accelDisplay.textContent = rounded.toFixed(2);
+        lastA = rounded;
+      }
+    }
+
+    function positionCartAtStart() {
+      cart.style.left = `${xInitial}px`;
+      updateString(xInitial);
+    }
+
+    function updateString(cartX) {
+      const cartRight = cartX + cartWidth;
+      const cartY = 85;
+      const boxLeft = motionProfile ? motionProfile.boxLeft : simArea.clientWidth - 34 - 170;
+      const boxY = 85;
+      const dx = boxLeft - cartRight;
+      const dy = boxY - cartY;
+      const length = Math.sqrt(dx * dx + dy * dy);
+      const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+
+      stringEl.style.left = `${cartRight}px`;
+      stringEl.style.top = `${cartY}px`;
+      stringEl.style.width = `${length}px`;
+      stringEl.style.transform = `rotate(${angle}deg)`;
+    }
+
+    function drawAxes() {
+      ctx.clearRect(0, 0, W, H);
+
+      const xMin = 0;
+      const xMax = motionProfile.totalTime;
+      const yMin = motionProfile.yMin;
+      const yMax = motionProfile.yMax;
+
+      const xToPx = x => padL + (x - xMin) / (xMax - xMin) * (W - padL - padR);
+      const yToPx = y => H - padB - (y - yMin) / (yMax - yMin) * (H - padT - padB);
+
+      ctx.strokeStyle = '#d0d0d0';
+      ctx.lineWidth = 1;
+
+      for (let xt = 0; xt <= xMax + 0.001; xt += 0.5) {
+        const x = xToPx(xt);
+        ctx.beginPath();
+        ctx.moveTo(x, padT);
+        ctx.lineTo(x, H - padB);
+        ctx.stroke();
+
+        ctx.fillStyle = '#111';
+        ctx.font = '14px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(xt.toFixed(1), x, H - padB + 20);
+      }
+
+      let labelCounter = 0;
+      for (let yt = Math.floor(yMin * 10) / 10; yt <= yMax + 0.001; yt += 0.2) {
+        const y = yToPx(yt);
+        ctx.beginPath();
+        ctx.moveTo(padL, y);
+        ctx.lineTo(W - padR, y);
+        ctx.stroke();
+
+        if (labelCounter % 3 === 0) {
+          ctx.fillStyle = '#111';
+          ctx.font = '14px Arial';
+          ctx.textAlign = 'right';
+          ctx.fillText(yt.toFixed(1), padL - 8, y + 4);
+        }
+
+        labelCounter++;
+      }
+
+      ctx.strokeStyle = '#111';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(padL, yToPx(0));
+      ctx.lineTo(W - padR, yToPx(0));
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(padL, padT);
+      ctx.lineTo(padL, H - padB);
+      ctx.lineTo(W - padR, H - padB);
+      ctx.stroke();
+
+      ctx.fillStyle = '#111';
+      ctx.font = '18px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('Time (s)', W / 2, H - 18);
+
+      ctx.save();
+      ctx.translate(24, H / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillText('Acceleration (m/s²)', 0, 0);
+      ctx.restore();
+
+      return { xToPx, yToPx };
+    }
+
+    function drawCurve(currentT, xToPx, yToPx) {
+      ctx.beginPath();
+      let first = true;
+      const steps = 500;
+
+      for (let i = 0; i <= steps; i++) {
+        const t = currentT * i / steps;
+        const a = accelerationAtTime(t);
+        const x = xToPx(t);
+        const y = yToPx(a);
+
+        if (first) {
+          ctx.moveTo(x, y);
+          first = false;
+        } else {
+          ctx.lineTo(x, y);
+        }
+      }
+
+      ctx.strokeStyle = '#98b333';
+      ctx.lineWidth = 4;
+      ctx.stroke();
+    }
+
+    function animate(timestamp) {
+      if (!t0) t0 = timestamp;
+      const elapsed = (timestamp - t0) / 1000;
+      const t = Math.min(elapsed, motionProfile.totalTime);
+
+      updateAccelerometer(t);
+
+      const axes = drawAxes();
+      drawCurve(t, axes.xToPx, axes.yToPx);
+
+      const x = positionAtTime(t);
+      cart.style.left = `${x}px`;
+      updateString(x);
+
+      if (t < motionProfile.totalTime) {
+        animationId = requestAnimationFrame(animate);
+      } else {
+        running = false;
+        lastA = null;
+        accelDisplay.textContent = '0.00';
+      }
+    }
+
+    function startSimulation() {
+      if (running) return;
+      resetSimulation(false);
+      lastA = null;
+      accelDisplay.textContent = '0.00';
+      running = true;
+      t0 = null;
+      animationId = requestAnimationFrame(animate);
+    }
+
+    function resetSimulation(redraw = true) {
+      if (animationId) cancelAnimationFrame(animationId);
+      animationId = null;
+      running = false;
+      t0 = null;
+      lastA = null;
+      updateDisplays();
+      accelDisplay.textContent = '0.00';
+      positionCartAtStart();
+      if (redraw) drawAxes();
+    }
+
+    startBtn.addEventListener('click', startSimulation);
+    resetBtn.addEventListener('click', () => resetSimulation(true));
+    increaseMassBtn.addEventListener('click', () => {
+      if (running) return;
+      if (massIndex < massLevels.length - 1) {
+        massIndex += 1;
+        cartMass = massLevels[massIndex];
+        resetSimulation(true);
+      }
+    });
+
+    decreaseMassBtn.addEventListener('click', () => {
+      if (running) return;
+      if (massIndex > 0) {
+        massIndex -= 1;
+        cartMass = massLevels[massIndex];
+        resetSimulation(true);
+      }
+    });
+
+    window.addEventListener('resize', () => {
+      if (!running) resetSimulation(true);
+    });
+
+    resetSimulation(true);
+  </script>
+</body>
+</html>
