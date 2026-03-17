@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rubber Band Launcher Activity</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #eef2f5;
+      color: #111;
+    }
+    .wrap {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 18px;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+    }
+    .sub {
+      margin: 0 0 14px;
+      line-height: 1.4;
+    }
+    .panel {
+      display: block;
+    }
+    .sim-card {
+      background: #fff;
+      border-radius: 14px;
+      box-shadow: 0 4px 18px rgba(0,0,0,0.08);
+      overflow: hidden;
+      position: relative;
+    }
+    .sim-top {
+      padding: 10px 14px;
+      border-bottom: 1px solid #ddd;
+      background: #f8fafc;
+      font-size: 16px;
+      line-height: 1.35;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      background: linear-gradient(#f8fbff, #edf5ff 45%, #f4f0e8 45%, #f4f0e8 100%);
+      cursor: default;
+    }
+    .reset-btn {
+      position: absolute;
+      top: 184px;
+      left: 80px;
+      padding: 8px 14px;
+      border: none;
+      border-radius: 8px;
+      background: #1d4ed8;
+      color: white;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      z-index: 2;
+    }
+    .reset-btn:hover {
+      background: #1e40af;
+    }
+    
+    
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Rubber Band Launcher Activity</h1>
+    <p class="sub">
+      Launch the rubber band to see how the added stretch affects the elastic potential energy and distance of launch.  
+    </p>
+    <div class="panel">
+      <div class="sim-card">
+        <button id="resetBtn" class="reset-btn">Reset</button>
+        <div class="sim-top">
+          <b>How to use:</b> 1) Pull back the rubber band. 2) Use the ruler to measure the added stretch. 3) Release to launch. 4) Measure the distance the rubber band traveled.
+        </div>
+        <canvas id="sim" width="1160" height="520"></canvas>
+      </div>
+
+      </div>
+    </div>
+    
+  </div>
+
+  <script>
+    const canvas = document.getElementById('sim');
+    const ctx = canvas.getContext('2d');
+    const resetBtn = document.getElementById('resetBtn');
+
+    let currentAngleDeg = 10;
+    const launchLoss = 0.12;
+
+    const groundY = 335;
+    const boardY = 335;
+    const cmPx = 5; // 1 cm = 6 px for screen ruler
+
+    const launcher = {
+      x: 350,
+      y: boardY,
+      baseW: 165,
+      baseH: 58,
+      rampLen: 150,
+      rampH: 52,
+      forkOffsetX: 10,
+      forkGap: 14
+    };
+
+    const ruler = {
+      x: 80,
+      y: 230,
+      w: 240,
+      h: 34
+    };
+
+    const band = {
+      dragging: false,
+      anchorTop: null,
+      anchorBottom: null,
+      restX: null,
+      restY: null,
+      pouchX: null,
+      pouchY: null,
+      releaseStretchPx: 0,
+      releaseStretchCm: 0
+    };
+
+    const projectile = {
+      active: false,
+      flying: false,
+      x: 0,
+      y: 0,
+      vx: 0,
+      vy: 0,
+      radius: 8,
+      maxHeight: 0,
+      landedDistanceCm: 0,
+      launchMeasureX: 0
+    };
+
+    let lastTime = 0;
+    let mouse = { x: 0, y: 0 };
+
+    function updateUI() {
+      // kept for compatibility with existing reset flow
+    }
+
+    function clamp(v, min, max) {
+      return Math.max(min, Math.min(max, v));
+    }
+
+    function dist(ax, ay, bx, by) {
+      return Math.hypot(ax - bx, ay - by);
+    }
+
+    function pointToSegmentDistance(px, py, x1, y1, x2, y2) {
+      const dx = x2 - x1;
+      const dy = y2 - y1;
+      const lenSq = dx * dx + dy * dy;
+      if (lenSq === 0) return Math.hypot(px - x1, py - y1);
+      let t = ((px - x1) * dx + (py - y1) * dy) / lenSq;
+      t = clamp(t, 0, 1);
+      const sx = x1 + t * dx;
+      const sy = y1 + t * dy;
+      return Math.hypot(px - sx, py - sy);
+    }
+
+    function getRampStart() {
+      return {
+        x: launcher.x - launcher.rampLen,
+        y: launcher.y - 4
+      };
+    }
+
+    function getForkPoints() {
+      return {
+        top: { x: launcher.x + launcher.forkOffsetX, y: launcher.y - launcher.rampH - 2 },
+        bottom: { x: launcher.x + launcher.forkOffsetX, y: launcher.y - launcher.rampH + launcher.forkGap }
+      };
+    }
+
+    function getRestPouch() {
+      const rampStart = getRampStart();
+      return {
+        x: rampStart.x + 135,
+        y: rampStart.y - 50
+      };
+    }
+
+    function resetShot(keepRuler = true) {
+      const fork = getForkPoints();
+      const rest = getRestPouch();
+      band.anchorTop = fork.top;
+      band.anchorBottom = fork.bottom;
+      band.restX = rest.x;
+      band.restY = rest.y;
+      band.pouchX = rest.x;
+      band.pouchY = rest.y;
+      band.dragging = false;
+      band.releaseStretchPx = 0;
+      band.releaseStretchCm = 0;
+
+      projectile.active = false;
+      projectile.flying = false;
+      projectile.x = rest.x;
+      projectile.y = rest.y;
+      projectile.vx = 0;
+      projectile.vy = 0;
+      projectile.maxHeight = 0;
+      projectile.landedDistanceCm = 0;
+      projectile.launchMeasureX = getBandLeftEdgeX();
+
+      // ruler position now fixed
+
+      updateUI();
+    }
+
+    function drawBackground() {
+      // wall/floor split already in canvas bg
+      ctx.strokeStyle = '#d0d7de';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < canvas.width; x += 50) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, groundY);
+        ctx.stroke();
+      }
+      for (let y = 0; y < groundY; y += 40) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y);
+        ctx.stroke();
+      }
+
+      ctx.fillStyle = '#4a2a10';
+      ctx.fillRect(40, boardY, canvas.width - 60, 18);
+      ctx.fillStyle = '#2e1808';
+      ctx.fillRect(40, boardY + 18, canvas.width - 60, 10);
+
+      ctx.strokeStyle = '#333';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(40, groundY);
+      ctx.lineTo(canvas.width - 20, groundY);
+      ctx.stroke();
+    }
+
+    function drawLauncher() {
+      const start = getRampStart();
+      const endX = launcher.x;
+      const endY = launcher.y - launcher.rampH;
+
+      // simple long right triangle ramp with slightly rounded corners
+      ctx.fillStyle = '#c08a57';
+      ctx.beginPath();
+
+      const r = 8; // corner radius
+
+      // bottom left
+      ctx.moveTo(start.x + r, launcher.y);
+      ctx.lineTo(endX - r, launcher.y);
+
+      // bottom right rounded
+      ctx.quadraticCurveTo(endX, launcher.y, endX, launcher.y - r);
+
+      // right vertical up
+      ctx.lineTo(endX, endY + r);
+
+      // top corner rounded
+      ctx.quadraticCurveTo(endX, endY, endX - r, endY);
+
+      // slope back to left
+      ctx.lineTo(start.x + r, start.y);
+
+      // top-left rounded
+      ctx.quadraticCurveTo(start.x, start.y, start.x, start.y + r);
+
+      // down to bottom-left
+      ctx.lineTo(start.x, launcher.y - r);
+
+      ctx.quadraticCurveTo(start.x, launcher.y, start.x + r, launcher.y);
+
+      ctx.closePath();
+      ctx.fill();
+
+      // attached box aligned to launcher bottom-right corner
+      ctx.fillStyle = '#b07a47';
+      ctx.fillRect(endX - 250, launcher.y - 15, 250, 15);
+    }
+
+    function drawRuler() {
+      ctx.save();
+      ctx.fillStyle = '#f5e2a9';
+      ctx.fillRect(ruler.x, ruler.y, ruler.w, ruler.h);
+      ctx.strokeStyle = '#916d1d';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(ruler.x, ruler.y, ruler.w, ruler.h);
+
+      const maxCm = Math.floor(ruler.w / cmPx);
+      for (let i = 0; i <= maxCm; i++) {
+        const x = ruler.x + ruler.w - i * cmPx;
+        let tick = 8;
+        if (i % 10 === 0) tick = 24;
+        else if (i % 5 === 0) tick = 16;
+
+        ctx.beginPath();
+        ctx.moveTo(x, ruler.y);
+        ctx.lineTo(x, ruler.y + tick);
+        ctx.strokeStyle = '#332200';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        if (i % 10 === 0 && i < maxCm) {
+          ctx.fillStyle = '#332200';
+          ctx.font = '12px Arial';
+          if (i === 0) {
+            ctx.fillText('0', x - 10, ruler.y + 28);
+          } else {
+            ctx.fillText(String(i), x - 8, ruler.y + 28);
+          }
+        }
+      }
+
+      ctx.fillStyle = '#5b4210';
+      ctx.font = 'bold 13px Arial';
+      
+      ctx.restore();
+    }
+
+    function getBandLeftEdgeX() {
+      const dxStretch = band.restX - band.pouchX;
+      const dyStretch = band.pouchY - band.restY;
+      const stretchPx = Math.hypot(dxStretch, dyStretch);
+      const centerX = (band.restX + band.pouchX) / 2;
+      const angle = Math.atan2(band.pouchY - band.restY, band.pouchX - band.restX);
+      const rx = 14 + stretchPx / 2;
+      return centerX - Math.abs(Math.cos(angle)) * rx;
+    }
+
+    function getProjectileRightEdgeX() {
+      return projectile.x + 14;
+    }
+
+    function drawMeasurementGuides() {
+      let guideX;
+      const guideTopY = ruler.y - 15;
+      let guideBottomY;
+
+      if (!projectile.flying) {
+        guideX = getBandLeftEdgeX();
+        const dxStretch = band.restX - band.pouchX;
+        const dyStretch = band.pouchY - band.restY;
+        const stretchPx = Math.hypot(dxStretch, dyStretch);
+        const centerY = (band.restY + band.pouchY) / 2;
+        const angle = Math.atan2(band.pouchY - band.restY, band.pouchX - band.restX);
+        const rx = 14 + stretchPx / 2;
+        guideBottomY = centerY - Math.abs(Math.sin(angle)) * rx;
+      } else {
+        guideX = projectile.launchMeasureX;
+        guideBottomY = band.restY;
+      }
+
+      ctx.strokeStyle = 'rgba(29,78,216,0.55)';
+      ctx.setLineDash([6, 5]);
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(guideX, guideTopY);
+      ctx.lineTo(guideX, guideBottomY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    
+
+    function drawProjectile() {
+      ctx.save();
+
+      if (projectile.flying) {
+        const angle = Math.atan2(projectile.vy, projectile.vx);
+        ctx.translate(projectile.x, projectile.y);
+        ctx.rotate(angle);
+
+        ctx.strokeStyle = '#d8c94a';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 14, 6, 0, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.restore();
+        return;
+      }
+
+      // after landing, keep the rubber band visible at its landing spot
+      if (projectile.active && !band.dragging && projectile.landedDistanceCm > 0) {
+        ctx.translate(projectile.x, projectile.y);
+        ctx.strokeStyle = '#d8c94a';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 14, 6, 0, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.restore();
+        return;
+      }
+
+      // while being stretched, draw the rubber band along the actual pullback line
+      const dxStretch = band.restX - band.pouchX;
+      const dyStretch = band.pouchY - band.restY;
+      const stretchPx = Math.hypot(dxStretch, dyStretch);
+      const centerX = (band.restX + band.pouchX) / 2;
+      const centerY = (band.restY + band.pouchY) / 2;
+      const angle = Math.atan2(band.pouchY - band.restY, band.pouchX - band.restX);
+      const rx = 14 + stretchPx / 2;
+      const ry = 6;
+
+      ctx.translate(centerX, centerY);
+      ctx.rotate(angle);
+
+      ctx.strokeStyle = '#d8c94a';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    function drawLabels() {
+      ctx.fillStyle = '#111';
+      ctx.font = '14px Arial';
+
+      ctx.font = '22px Arial';
+      ctx.fillText(`Stretch at launch: ${band.releaseStretchCm.toFixed(1)} cm`, 60, 38);
+      ctx.fillText(`Distance: ${(projectile.landedDistanceCm / 100).toFixed(2)} m`, 60, 70);
+      ctx.fillText(`Highest point: ${projectile.maxHeight.toFixed(1)} cm`, 60, 102);
+
+      // grid key
+      const keyX = launcher.x;
+      const keyY = 36;
+      const keyWidth = 50;
+      const tickHalf = 12;
+
+      ctx.strokeStyle = '#111';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(keyX, keyY);
+      ctx.lineTo(keyX + keyWidth, keyY);
+      ctx.moveTo(keyX, keyY - tickHalf);
+      ctx.lineTo(keyX, keyY + tickHalf);
+      ctx.moveTo(keyX + keyWidth, keyY - tickHalf);
+      ctx.lineTo(keyX + keyWidth, keyY + tickHalf);
+      ctx.stroke();
+
+      ctx.fillStyle = '#111';
+      ctx.font = '20px Arial';
+      ctx.fillText('Each grid square = 0.1 m', keyX + keyWidth + 14, keyY + 7);
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawBackground();
+      drawLauncher();
+      drawRuler();
+      drawMeasurementGuides();
+      
+      drawProjectile();
+      drawLabels();
+    }
+
+    function updateProjectile(dt) {
+      if (!projectile.flying) return;
+
+      const dragFactor = launchLoss;
+      const g = 720; // px/s^2 visual gravity
+
+      projectile.vx *= (1 - dragFactor * dt * 0.7);
+      projectile.vy += g * dt;
+
+      projectile.x += projectile.vx * dt;
+      projectile.y += projectile.vy * dt;
+
+      const heightAboveGround = (groundY - projectile.y) / cmPx;
+      projectile.maxHeight = Math.max(projectile.maxHeight, Math.max(0, heightAboveGround));
+
+      if (projectile.y + projectile.radius >= groundY) {
+        projectile.y = groundY - projectile.radius;
+        projectile.flying = false;
+
+        // measure from the same visible left edge point used by the dashed guide
+        const landingEdgeX = getProjectileRightEdgeX();
+        const landingFromLaunchPx = landingEdgeX - projectile.launchMeasureX;
+        projectile.landedDistanceCm = Math.max(0, landingFromLaunchPx / cmPx); // stored in cm
+        const meters = projectile.landedDistanceCm / 100;
+        projectile.landedDistanceMeters = meters;
+        updateUI();
+      }
+    }
+
+    function launch() {
+      const dx = band.restX - band.pouchX;
+      const dy = band.restY - band.pouchY;
+      const stretchPx = Math.hypot(dx, dy);
+      const stretchCm = stretchPx / cmPx;
+
+      band.releaseStretchPx = stretchPx;
+      band.releaseStretchCm = stretchCm;
+
+      projectile.launchMeasureX = getBandLeftEdgeX();
+
+      const angleDeg = currentAngleDeg;
+      const angleRad = angleDeg * Math.PI / 180;
+      const speedAtThirtyCm = 920;
+      const speed = (stretchCm / 30) * speedAtThirtyCm;
+
+      projectile.active = true;
+      projectile.flying = true;
+      projectile.x = band.restX;
+      projectile.y = band.restY;
+      projectile.vx = Math.cos(angleRad) * speed;
+      projectile.vy = -Math.sin(angleRad) * speed;
+      projectile.maxHeight = 0;
+      projectile.landedDistanceCm = 0;
+
+      band.pouchX = band.restX;
+      band.pouchY = band.restY;
+      updateUI();
+    }
+
+    function getMousePos(evt) {
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: (evt.clientX - rect.left) * (canvas.width / rect.width),
+        y: (evt.clientY - rect.top) * (canvas.height / rect.height)
+      };
+    }
+
+    function onPointerDown(evt) {
+      const p = getMousePos(evt);
+      mouse = p;
+
+      const dToPouch = dist(p.x, p.y, band.restX, band.restY);
+      if (!projectile.flying && dToPouch < 18) {
+        band.dragging = true;
+        projectile.active = true;
+        
+        return;
+      }
+
+      
+    }
+
+    function onPointerMove(evt) {
+      const p = getMousePos(evt);
+      mouse = p;
+
+      
+
+      if (band.dragging) {
+        const maxBack = band.restX - 10;
+        const minX = band.restX - 180;
+        const minY = band.restY - 65;
+        const maxY = band.restY + 45;
+
+        band.pouchX = clamp(p.x, minX, maxBack);
+
+        // keep stretch along launch angle so band angles downward
+        const angleRad = currentAngleDeg * Math.PI / 180;
+        const dx = band.restX - band.pouchX;
+        const dy = Math.tan(angleRad) * dx;
+        band.pouchY = band.restY + dy;
+        projectile.x = band.pouchX;
+        projectile.y = band.pouchY;
+      }
+    }
+
+    function onPointerUp() {
+      if (band.dragging) {
+        band.dragging = false;
+        launch();
+      }
+      
+    }
+
+    canvas.addEventListener('pointerdown', onPointerDown);
+    canvas.addEventListener('pointermove', onPointerMove);
+    canvas.addEventListener('pointerup', onPointerUp);
+    canvas.addEventListener('pointerleave', onPointerUp);
+    resetBtn.addEventListener('click', () => resetShot(false));
+
+    
+
+    function animate(ts) {
+      if (!lastTime) lastTime = ts;
+      const dt = Math.min(0.025, (ts - lastTime) / 1000);
+      lastTime = ts;
+
+      updateProjectile(dt);
+      draw();
+      requestAnimationFrame(animate);
+    }
+
+    if (!CanvasRenderingContext2D.prototype.roundRect) {
+      CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
+        if (typeof r === 'number') r = { tl: r, tr: r, br: r, bl: r };
+        this.beginPath();
+        this.moveTo(x + r.tl, y);
+        this.lineTo(x + w - r.tr, y);
+        this.quadraticCurveTo(x + w, y, x + w, y + r.tr);
+        this.lineTo(x + w, y + h - r.br);
+        this.quadraticCurveTo(x + w, y + h, x + w - r.br, y + h);
+        this.lineTo(x + r.bl, y + h);
+        this.quadraticCurveTo(x, y + h, x, y + h - r.bl);
+        this.lineTo(x, y + r.tl);
+        this.quadraticCurveTo(x, y, x + r.tl, y);
+        this.closePath();
+        return this;
+      };
+    }
+
+    resetShot(false);
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>
