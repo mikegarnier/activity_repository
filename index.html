@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Physics Activities</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 0 20px;
+      line-height: 1.6;
+      color: #111;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+
+    p {
+      text-align: center;
+      color: #555;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+      margin-top: 30px;
+    }
+
+    li {
+      margin: 10px 0;
+      padding: 10px 14px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      background: #fafafa;
+    }
+
+    a {
+      text-decoration: none;
+      color: #0066cc;
+      font-weight: bold;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    .status {
+      text-align: center;
+      margin-top: 30px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <h1>Physics Activity Simulations</h1>
+  <p>Click any activity below to open it.</p>
+
+  <div class="status" id="status">Loading activities...</div>
+  <ul id="activityList"></ul>
+
+  <script>
+    const username = "mikegarnier";
+    const repo = "activity_repository";
+    const branch = "main"; // change to "master" if your repo uses master
+    const apiUrl = `https://api.github.com/repos/${username}/${repo}/contents/`;
+    const baseUrl = `https://${username}.github.io/${repo}/`;
+
+    const activityList = document.getElementById("activityList");
+    const status = document.getElementById("status");
+
+    function prettyName(folderName) {
+      return folderName.replaceAll("_", " ");
+    }
+
+    async function loadActivities() {
+      try {
+        const response = await fetch(apiUrl);
+
+        if (!response.ok) {
+          throw new Error(`GitHub API error: ${response.status}`);
+        }
+
+        const items = await response.json();
+
+        // Keep only folders, and ignore hidden/system folders if needed
+        const folders = items.filter(item =>
+          item.type === "dir" &&
+          !item.name.startsWith(".") &&
+          item.name !== "assets"
+        );
+
+        if (folders.length === 0) {
+          status.textContent = "No activity folders found.";
+          return;
+        }
+
+        // Optional: sort alphabetically
+        folders.sort((a, b) => a.name.localeCompare(b.name));
+
+        let addedCount = 0;
+
+        for (const folder of folders) {
+          // Check whether the folder contains index.html
+          const folderContentsUrl = `https://api.github.com/repos/${username}/${repo}/contents/${folder.name}?ref=${branch}`;
+          const folderResponse = await fetch(folderContentsUrl);
+
+          if (!folderResponse.ok) continue;
+
+          const folderItems = await folderResponse.json();
+          const hasIndex = folderItems.some(file => file.name.toLowerCase() === "index.html");
+
+          if (!hasIndex) continue;
+
+          const li = document.createElement("li");
+          const link = document.createElement("a");
+
+          link.href = `${baseUrl}${folder.name}/`;
+          link.textContent = prettyName(folder.name);
+
+          li.appendChild(link);
+          activityList.appendChild(li);
+          addedCount++;
+        }
+
+        status.textContent = addedCount > 0
+          ? `Found ${addedCount} activities.`
+          : "No folders with index.html were found.";
+      } catch (error) {
+        console.error(error);
+        status.textContent = "Could not load activities automatically.";
+      }
+    }
+
+    loadActivities();
+  </script>
+</body>
+</html>
