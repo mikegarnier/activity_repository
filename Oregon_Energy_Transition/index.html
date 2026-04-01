@@ -1,0 +1,604 @@
+import React, { useEffect, useMemo, useState } from "react";
+import { motion } from "framer-motion";
+import { AlertTriangle, CheckCircle2, Gauge, Power, Briefcase, DollarSign, Zap, ShieldAlert, Factory, School, BusFront, Activity } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Slider } from "@/components/ui/slider";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+
+function TooltipShell({ text, children, position = "top" }) {
+  const positionClass =
+    position === "bottom"
+      ? "top-full mt-2 left-1/2 -translate-x-1/2"
+      : position === "right"
+        ? "left-full ml-2 top-1/2 -translate-y-1/2"
+        : position === "left"
+          ? "right-full mr-2 top-1/2 -translate-y-1/2"
+          : "bottom-full mb-2 left-1/2 -translate-x-1/2";
+
+  return (
+    <div className="group relative">
+      {children}
+      <div className={`pointer-events-none absolute z-50 hidden w-72 rounded-xl border border-cyan-700/70 bg-slate-950/95 px-3 py-2 text-xs leading-relaxed text-cyan-100 shadow-2xl group-hover:block ${positionClass}`}>
+        {text}
+      </div>
+    </div>
+  );
+}
+
+const YEARS = [2025, 2030, 2035, 2040, 2045, 2050];
+const STAGE_WINDOWS = [
+  "2025–2030",
+  "2030–2035",
+  "2035–2040",
+  "2040–2045",
+  "2045–2050",
+];
+const DEFAULT = {
+  wind: 0,
+  solar: 0,
+  storage: 0,
+  grid: 0,
+  retire: 0,
+  windGoal: 60,
+  solarGoal: 60,
+  storageGoal: 50,
+  gridGoal: 50,
+  retireGoal: 40,
+  education: 78,
+  transportation: 70,
+  reserves: 74,
+  retraining: 46,
+};
+
+function clamp(n, min, max) {
+  return Math.min(max, Math.max(min, n));
+}
+
+function polarToCartesian(cx, cy, r, angle) {
+  const rad = ((angle - 90) * Math.PI) / 180;
+  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+}
+
+function arcPath(cx, cy, r, startAngle, endAngle) {
+  const start = polarToCartesian(cx, cy, r, endAngle);
+  const end = polarToCartesian(cx, cy, r, startAngle);
+  const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
+  return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArcFlag} 0 ${end.x} ${end.y}`;
+}
+
+function GaugeDial({ label, value, icon: Icon, unit = "%", dangerHigh = false, goodHigh = false, tooltip }) {
+  const angle = -130 + (clamp(value, 0, 100) / 100) * 260;
+  const zone = goodHigh ? value < 45 : (dangerHigh ? value > 70 : value < 45);
+  return (
+    <TooltipShell text={tooltip}>
+      <Card className="bg-zinc-900/90 border-zinc-700 rounded-2xl shadow-2xl">
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-zinc-100 text-sm font-semibold tracking-wide uppercase">
+            <Icon className="w-4 h-4" /> {label}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="relative mx-auto w-44 h-32">
+            <svg viewBox="0 0 200 120" className="w-full h-full overflow-visible">
+              {goodHigh ? (
+              <>
+                <path d={arcPath(100, 100, 72, -130, -20)} stroke="#ef4444" strokeWidth="12" fill="none" strokeLinecap="round" />
+                <path d={arcPath(100, 100, 72, -20, 40)} stroke="#eab308" strokeWidth="12" fill="none" strokeLinecap="round" />
+                <path d={arcPath(100, 100, 72, 40, 130)} stroke="#22c55e" strokeWidth="12" fill="none" strokeLinecap="round" />
+              </>
+            ) : (
+              <>
+                <path d={arcPath(100, 100, 72, -130, -20)} stroke="#22c55e" strokeWidth="12" fill="none" strokeLinecap="round" />
+                <path d={arcPath(100, 100, 72, -20, 40)} stroke="#eab308" strokeWidth="12" fill="none" strokeLinecap="round" />
+                <path d={arcPath(100, 100, 72, 40, 130)} stroke="#ef4444" strokeWidth="12" fill="none" strokeLinecap="round" />
+              </>
+            )}
+              <path d={arcPath(100, 100, 56, -130, 130)} stroke="#3f3f46" strokeWidth="2" fill="none" />
+              {[0, 25, 50, 75, 100].map((t) => {
+                const a = -130 + (t / 100) * 260;
+                const p1 = polarToCartesian(100, 100, 52, a);
+                const p2 = polarToCartesian(100, 100, 64, a);
+                return <line key={t} x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} stroke="#a1a1aa" strokeWidth="2" />;
+              })}
+              <line
+                x1="100"
+                y1="100"
+                x2={polarToCartesian(100, 100, 48, angle).x}
+                y2={polarToCartesian(100, 100, 48, angle).y}
+                stroke={zone ? "#f43f5e" : "#f4f4f5"}
+                strokeWidth="4"
+                strokeLinecap="round"
+              />
+              <circle cx="100" cy="100" r="6" fill="#fafafa" />
+            </svg>
+            <div className="absolute inset-x-0 bottom-1 text-center">
+              <div className={`text-3xl font-bold tabular-nums ${zone ? "text-rose-400" : "text-emerald-300"}`}>{Math.round(value)}</div>
+              <div className="text-[11px] uppercase tracking-[0.25em] text-zinc-400">{unit}</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </TooltipShell>
+  );
+}
+
+function WarningLight({ label, active, color = "red", tooltip }) {
+  const map = {
+    red: active ? "bg-red-500 shadow-red-500/70" : "bg-red-950/60",
+    yellow: active ? "bg-yellow-400 shadow-yellow-400/70" : "bg-yellow-950/60",
+    green: active ? "bg-emerald-400 shadow-emerald-400/70" : "bg-emerald-950/60",
+  };
+  return (
+    <TooltipShell text={tooltip}>
+      <div className="rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 flex items-center gap-3">
+        <div className={`w-4 h-4 rounded-full ${map[color]} ${active ? "animate-pulse shadow-lg" : ""}`} />
+        <div className="text-[11px] text-zinc-200 tracking-wide uppercase leading-tight">{label}</div>
+      </div>
+    </TooltipShell>
+  );
+}
+
+function ControlSlider({ label, value, onChange, icon: Icon, accent, subtitle, tooltip, tooltipPosition = "right" }) {
+  return (
+    <TooltipShell text={tooltip} position={tooltipPosition}>
+      <div className="rounded-2xl border border-zinc-700 bg-zinc-900/85 p-4">
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <div>
+            <div className="flex items-center gap-2 text-zinc-100 text-sm font-semibold uppercase tracking-wide">
+              <Icon className="w-4 h-4" /> {label}
+            </div>
+            <div className="text-xs text-zinc-400 mt-1">{subtitle}</div>
+          </div>
+          <div className={`text-lg font-bold tabular-nums ${accent}`}>{value}</div>
+        </div>
+        <Slider value={[value]} onValueChange={(v) => onChange(v[0])} min={0} max={100} step={1} />
+      </div>
+    </TooltipShell>
+  );
+}
+
+function MiniScreen({ title, children, tooltip }) {
+  return (
+    <TooltipShell text={tooltip}>
+      <Card className="bg-slate-950 border-cyan-900 rounded-2xl shadow-xl overflow-hidden">
+        <CardHeader className="pb-2 border-b border-cyan-950">
+          <CardTitle className="text-cyan-300 text-xs uppercase tracking-[0.3em]">{title}</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-4">{children}</CardContent>
+      </Card>
+    </TooltipShell>
+  );
+}
+
+function TinyBarStack({ data }) {
+  const total = data.reduce((a, b) => a + b.value, 0) || 1;
+  return (
+    <div className="space-y-3">
+      <div className="h-6 rounded-full bg-slate-900 overflow-hidden flex border border-cyan-950">
+        {data.map((item) => (
+          <div key={item.name} className="h-full" style={{ width: `${(item.value / total) * 100}%`, background: item.color }} />
+        ))}
+      </div>
+      <div className="grid grid-cols-2 gap-2 text-xs">
+        {data.map((item) => (
+          <div key={item.name} className="flex items-center justify-between rounded-lg border border-cyan-950 px-2 py-1 text-cyan-100">
+            <span>{item.name}</span>
+            <span className="tabular-nums">{item.value.toFixed(1)}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function GoalProgressRow({ label, goal, progress, onChange, colorClass, tooltip }) {
+  const pct = goal <= 0 ? 0 : clamp((progress / goal) * 100, 0, 100);
+  return (
+    <TooltipShell text={tooltip} position="left">
+      <div className="rounded-2xl border border-zinc-700 bg-zinc-900/85 p-4 space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <div className="text-zinc-100 text-sm font-semibold uppercase tracking-wide">{label} Goal</div>
+            <div className="text-xs text-zinc-400">Set a long-term target, then track how much of it has been completed.</div>
+          </div>
+          <div className={`text-lg font-bold tabular-nums ${colorClass}`}>{goal}</div>
+        </div>
+        <Slider value={[goal]} onValueChange={(v) => onChange(v[0])} min={0} max={100} step={1} />
+        <div>
+          <div className="flex items-center justify-between text-xs text-zinc-400 mb-2">
+            <span>Reached so far</span>
+            <span className="tabular-nums">{Math.round(progress)} / {goal}</span>
+          </div>
+          <Progress value={pct} />
+        </div>
+      </div>
+    </TooltipShell>
+  );
+}
+
+export default function OregonEnergyTransitionCockpit() {
+  const [stagePlans, setStagePlans] = useState(STAGE_WINDOWS.map(() => ({ ...DEFAULT })));
+  const [selectedStage, setSelectedStage] = useState(0);
+  const [alarmFlash, setAlarmFlash] = useState(false);
+
+  const controls = stagePlans[selectedStage];
+
+  const update = (key, value) => {
+    setStagePlans((plans) => plans.map((plan, idx) => (idx === selectedStage ? { ...plan, [key]: value } : plan)));
+  };
+
+  const model = useMemo(() => {
+    const baseBudget = [70, 74, 80, 85, 90, 96];
+    const demand = [100, 108, 118, 126, 132, 138];
+
+    const cumulativeEnergy = YEARS.map((_, i) => {
+      if (i === 0) {
+        return { wind: 0, solar: 0, storage: 0, grid: 0, retire: 0 };
+      }
+      const stagesToInclude = stagePlans.slice(0, i);
+      return stagesToInclude.reduce(
+        (acc, stage) => ({
+          wind: acc.wind + stage.wind,
+          solar: acc.solar + stage.solar,
+          storage: acc.storage + stage.storage,
+          grid: acc.grid + stage.grid,
+          retire: acc.retire + stage.retire,
+        }),
+        { wind: 0, solar: 0, storage: 0, grid: 0, retire: 0 }
+      );
+    });
+
+    const policyByYear = YEARS.map((_, i) => {
+      if (i === 0) return { ...DEFAULT };
+      return stagePlans[Math.min(i - 1, stagePlans.length - 1)];
+    });
+
+    const energyInvestment = YEARS.map((_, i) => {
+      const timeFactor = 0.7 + i * 0.12;
+      const energy = cumulativeEnergy[i];
+      const policy = policyByYear[i];
+      return (
+        energy.wind * 0.05 * timeFactor +
+        energy.solar * 0.042 * timeFactor +
+        energy.storage * 0.038 * timeFactor +
+        energy.grid * 0.03 * timeFactor +
+        policy.retraining * 0.012 * timeFactor
+      );
+    });
+
+    const educationSpend = YEARS.map((_, i) => {
+      const policy = policyByYear[i];
+      return clamp(12 + policy.education * 0.08 - energyInvestment[i] * 0.18 + i * 0.2, 7, 20);
+    });
+    const transportationSpend = YEARS.map((_, i) => {
+      const policy = policyByYear[i];
+      return clamp(8 + policy.transportation * 0.06 - energyInvestment[i] * 0.12 + i * 0.15, 5, 16);
+    });
+    const healthSpend = YEARS.map((_, i) => clamp(10.5 + i * 0.25 - energyInvestment[i] * 0.08, 8, 18));
+    const safetySpend = YEARS.map((_, i) => clamp(5.5 + i * 0.12 - energyInvestment[i] * 0.04, 4, 9));
+    const reserveSpend = YEARS.map((_, i) => {
+      const policy = policyByYear[i];
+      return clamp(2.5 + policy.reserves * 0.04 - energyInvestment[i] * 0.07 - i * 0.08, 0.5, 7);
+    });
+
+    const totalSpend = YEARS.map((_, i) => educationSpend[i] + transportationSpend[i] + healthSpend[i] + safetySpend[i] + reserveSpend[i] + energyInvestment[i] + 2.2);
+    const fiscalStressSeries = YEARS.map((_, i) => {
+      const budgetUsePct = (totalSpend[i] / baseBudget[i]) * 100;
+      const lowReservesPenalty = Math.max(0, 3 - reserveSpend[i]) * 4;
+      const overBudgetPenalty = Math.max(0, budgetUsePct - 100) * 0.9;
+      const nearCapPressure = Math.max(0, budgetUsePct - 82) * 0.45;
+      return clamp(overBudgetPenalty + nearCapPressure + lowReservesPenalty, 0, 100);
+    });
+
+    const budgetBalanceSeries = YEARS.map((_, i) => {
+      const budgetUsePct = (totalSpend[i] / baseBudget[i]) * 100;
+      return clamp(50 + (budgetUsePct - 100), 0, 100);
+    });
+
+    const renewableStrengthSeries = YEARS.map((_, i) => {
+      const energy = cumulativeEnergy[i];
+      return energy.wind * 0.36 + energy.solar * 0.28 + energy.storage * 0.21 + energy.grid * 0.15;
+    });
+    const constructionStressSeries = YEARS.map((_, i) => {
+      const energy = cumulativeEnergy[i];
+      const policy = policyByYear[i];
+      return clamp(energy.wind * 0.28 + energy.solar * 0.24 + energy.grid * 0.2 + energy.retire * 0.22 - policy.reserves * 0.12 - i * 3.5, 0, 100);
+    });
+    const volatilitySeries = YEARS.map((_, i) => {
+      const energy = cumulativeEnergy[i];
+      const policy = policyByYear[i];
+      const budgetSwing = i === 0 ? 8 : Math.abs(totalSpend[i] - totalSpend[i - 1]) * 10 + Math.abs(educationSpend[i] - educationSpend[i - 1]) * 5;
+      const gridInstability = Math.max(0, (energy.wind + energy.solar) * 0.45 - energy.storage * 0.32 - energy.grid * 0.22);
+      return clamp(18 + budgetSwing + gridInstability + constructionStressSeries[i] * 0.3 + Math.max(0, 45 - policy.retraining) * 0.22, 0, 100);
+    });
+
+    const cleanCapacity = YEARS.map((_, i) => 35 + renewableStrengthSeries[i] * 0.22 + i * 8 + cumulativeEnergy[i].grid * 0.08 * i);
+    const fossilPhaseoutPenalty = YEARS.map((_, i) => Math.max(0, cumulativeEnergy[i].retire * 0.7 - cleanCapacity[i] * 0.18));
+    const reliabilitySeries = YEARS.map((_, i) => {
+      const policy = policyByYear[i];
+      return clamp(72 + cumulativeEnergy[i].storage * 0.18 + cumulativeEnergy[i].grid * 0.22 + policy.retraining * 0.05 - volatilitySeries[i] * 0.2 - fossilPhaseoutPenalty[i] * 0.28 + (cleanCapacity[i] - demand[i]) * 0.8, 0, 100);
+    });
+
+    const emissionsSeries = YEARS.map((_, i) => clamp(82 - i * 8 - cumulativeEnergy[i].retire * 0.35 - (cumulativeEnergy[i].wind + cumulativeEnergy[i].solar) * 0.12 + Math.max(0, 48 - reliabilitySeries[i]) * 0.18, 0, 100));
+
+    const jobsLostYearly = YEARS.map((_, i) => {
+      const policy = policyByYear[i];
+      const energy = cumulativeEnergy[i];
+      return Math.max(0, Math.round(energy.retire * 10 + Math.max(0, 52 - policy.retraining) * 18 + Math.max(0, 45 - transportationSpend[i] * 5) * 12 - energy.wind * 4 - energy.solar * 3 - energy.grid * 2 - i * 60));
+    });
+    const jobsGainedYearly = YEARS.map((_, i) => {
+      const policy = policyByYear[i];
+      const energy = cumulativeEnergy[i];
+      return Math.max(0, Math.round(energy.wind * 10 + energy.solar * 9 + energy.storage * 8 + energy.grid * 7 + policy.retraining * 10 - constructionStressSeries[i] * 4 + i * 120));
+    });
+    const netJobsSeries = YEARS.map((_, i) => jobsGainedYearly[i] - jobsLostYearly[i]);
+    const totalDisplaced = jobsLostYearly.reduce((a, b) => a + b, 0);
+
+    const objectives = [
+      { label: "Meet 2040 clean deadline", passed: emissionsSeries[3] <= 20 },
+      { label: "Avoid blackout conditions", passed: reliabilitySeries.every((v) => v >= 52) },
+      { label: "Keep volatility manageable", passed: volatilitySeries.every((v) => v <= 72) },
+      { label: "Protect education funding", passed: educationSpend.every((v) => v >= 9.5) },
+      { label: "Limit net job shock", passed: netJobsSeries.filter((v) => v < -1200).length <= 1 },
+    ];
+
+    return {
+      baseBudget,
+      demand,
+      educationSpend,
+      transportationSpend,
+      healthSpend,
+      safetySpend,
+      reserveSpend,
+      energyInvestment,
+      totalSpend,
+      fiscalStressSeries,
+      budgetBalanceSeries,
+      volatilitySeries,
+      constructionStressSeries,
+      reliabilitySeries,
+      emissionsSeries,
+      jobsLostYearly,
+      jobsGainedYearly,
+      netJobsSeries,
+      totalDisplaced,
+      objectives,
+    };
+  }, [stagePlans]);
+
+  const displayIndex = selectedStage + 1;
+  const currentGoalProgress = useMemo(() => {
+    const stagesUsed = stagePlans.slice(0, selectedStage + 1);
+    return stagesUsed.reduce(
+      (acc, stage) => ({
+        wind: acc.wind + stage.wind,
+        solar: acc.solar + stage.solar,
+        storage: acc.storage + stage.storage,
+        grid: acc.grid + stage.grid,
+        retire: acc.retire + stage.retire,
+      }),
+      { wind: 0, solar: 0, storage: 0, grid: 0, retire: 0 }
+    );
+  }, [stagePlans, selectedStage]);
+  const selectedAlerts = useMemo(() => ({
+    blackout: model.reliabilitySeries[displayIndex] < 45,
+    overload: model.fiscalStressSeries[displayIndex] > 75,
+    overbuild: model.constructionStressSeries[displayIndex] > 78,
+    cuts: model.educationSpend[displayIndex] < 10 || model.transportationSpend[displayIndex] < 6,
+    delay: model.volatilitySeries[displayIndex] > 72,
+    deadline: displayIndex >= 3 && model.emissionsSeries[3] > 20,
+    jobs: model.totalDisplaced > 10000 || model.netJobsSeries[displayIndex] < -1800,
+    winter: displayIndex >= 2 && model.reliabilitySeries[displayIndex] < 55,
+    drought: controls.grid < 20 && controls.storage < 25,
+  }), [model, displayIndex, controls.grid, controls.storage]);
+
+  useEffect(() => {
+    const litWarnings = Object.values(selectedAlerts).filter(Boolean).length;
+    setAlarmFlash(litWarnings >= 6);
+  }, [selectedAlerts]);
+
+  const borderClass = alarmFlash ? "animate-pulse border-rose-500 shadow-[0_0_35px_rgba(244,63,94,0.35)]" : "border-cyan-800 shadow-[0_0_35px_rgba(34,211,238,0.12)]";
+
+  return (
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,#1e293b_0%,#09090b_45%,#020617_100%)] text-white p-4 md:p-6">
+      <motion.div
+        animate={alarmFlash ? { boxShadow: ["0 0 0 rgba(244,63,94,0)", "0 0 35px rgba(244,63,94,0.35)", "0 0 0 rgba(244,63,94,0)"] } : { boxShadow: "0 0 20px rgba(34,211,238,0.10)" }}
+        transition={{ duration: 1.2, repeat: Infinity }}
+        className={`max-w-7xl mx-auto rounded-[32px] border-2 ${borderClass} bg-zinc-950/90 backdrop-blur-md p-4 md:p-6`}
+      >
+        <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 mb-6">
+          <div>
+            <div className="text-cyan-300 text-xs tracking-[0.45em] uppercase mb-2">State Systems Command</div>
+            <h1 className="text-2xl md:text-4xl font-black tracking-tight">OREGON ENERGY TRANSITION COCKPIT</h1>
+            <div className="text-zinc-400 mt-2 max-w-3xl">
+              Build the plan in five-year stages. Select a time window, make decisions for that stage, then move to the next window and watch the dashboard respond.
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <TooltipShell text="Choose which five-year stage you are actively planning. The sliders now edit only that window, so students build the long-term plan one stage at a time.">
+              <div className="rounded-xl border border-cyan-800 bg-cyan-950/60 px-3 py-2 flex items-center gap-2">
+                <span className="text-cyan-300 text-xs tracking-[0.25em] uppercase">Year Window</span>
+                <select
+                  value={selectedStage}
+                  onChange={(e) => setSelectedStage(Number(e.target.value))}
+                  className="bg-zinc-950 text-cyan-100 border border-cyan-800 rounded-md px-2 py-1 text-sm outline-none"
+                >
+                  {STAGE_WINDOWS.map((window, idx) => (
+                    <option key={window} value={idx}>{window}</option>
+                  ))}
+                </select>
+              </div>
+            </TooltipShell>
+            <TooltipShell text="Stable State means fewer than six warning lights are active. Alarm State means six or more warning lights are lit in the selected time window."><Badge className={`${alarmFlash ? "bg-rose-950 text-rose-300 border-rose-800" : "bg-emerald-950 text-emerald-300 border-emerald-800"} border`}>
+              {alarmFlash ? "ALARM STATE" : "STABLE STATE"}
+            </Badge></TooltipShell>
+            <TooltipShell text="Returns every five-year stage to the default baseline so students can restart the full transition plan."><Button variant="outline" className="border-zinc-700 bg-zinc-900 hover:bg-zinc-800" onClick={() => setStagePlans(STAGE_WINDOWS.map(() => ({ ...DEFAULT })))}>Reset to Baseline</Button></TooltipShell>
+          </div>
+        </div>
+
+        <div className="mb-4 grid grid-cols-1 md:grid-cols-5 gap-2">
+          {STAGE_WINDOWS.map((window, idx) => (
+            <button
+              key={window}
+              onClick={() => setSelectedStage(idx)}
+              className={`rounded-xl border px-3 py-2 text-sm font-semibold transition ${selectedStage === idx ? "border-cyan-400 bg-cyan-950 text-cyan-100" : "border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-zinc-200"}`}
+            >
+              {window}
+            </button>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
+          <div className="xl:col-span-3 space-y-4">
+            <Card className="bg-zinc-950 border-zinc-800 rounded-2xl">
+              <CardHeader>
+                <TooltipShell text="These controls set priorities for the currently selected five-year window. Students can protect schools, transportation, reserves, or worker retraining differently in each stage."><CardTitle className="text-zinc-100 text-sm uppercase tracking-[0.3em]">Budget / Policy Controls</CardTitle></TooltipShell>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <ControlSlider label="Education Protection" value={controls.education} onChange={(v) => update("education", v)} icon={School} accent="text-sky-300" subtitle={`Active in ${STAGE_WINDOWS[selectedStage]}.`} tooltip="Raises the priority of education in the selected time window. Higher settings shield school funding but leave less flexibility elsewhere. Increase this if department cuts appear, but lower it if fiscal stress gets too high." />
+                <ControlSlider label="Transportation Protection" value={controls.transportation} onChange={(v) => update("transportation", v)} icon={BusFront} accent="text-amber-300" subtitle={`Active in ${STAGE_WINDOWS[selectedStage]}.`} tooltip="Raises the priority of roads, bridges, and transit in the selected time window. Higher settings reduce transportation cuts during the transition. Increase this if job losses spike or transportation cuts appear, but ease it if the budget becomes too tight." />
+                <ControlSlider label="Reserve Buffer" value={controls.reserves} onChange={(v) => update("reserves", v)} icon={ShieldAlert} accent="text-emerald-300" subtitle={`Active in ${STAGE_WINDOWS[selectedStage]}.`} tooltip="Builds a cushion for unexpected costs or crises in the selected window. Strong reserves lower fiscal stress and make the plan more resilient. Increase this when budget overload or volatility is rising." />
+                <ControlSlider label="Worker Retraining" value={controls.retraining} onChange={(v) => update("retraining", v)} icon={Briefcase} accent="text-fuchsia-300" subtitle={`Active in ${STAGE_WINDOWS[selectedStage]}.`} tooltip="Invests in helping workers move from shrinking sectors into new jobs during the selected window. Higher settings reduce job shocks and improve long-term stability. Increase this when the job loss counter or workforce warnings start getting worse." />
+              </CardContent>
+            </Card>
+
+            <Card className="bg-zinc-950 border-zinc-800 rounded-2xl">
+              <CardHeader>
+                <TooltipShell text="Mission objectives still judge the whole long-term plan, not just one stage. Students should use the selected window to repair weak spots without breaking the full plan."><CardTitle className="text-zinc-100 text-sm uppercase tracking-[0.3em]">Mission Objectives</CardTitle></TooltipShell>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {model.objectives.map((obj) => (
+                  <TooltipShell
+                    key={obj.label}
+                    text={
+                      obj.label === "Meet 2040 clean deadline"
+                        ? "Passes if emissions are low enough by 2040 to represent meeting the clean electricity target."
+                        : obj.label === "Avoid blackout conditions"
+                          ? "Passes if reliability stays above minimum levels in every time period."
+                          : obj.label === "Keep volatility manageable"
+                            ? "Passes if the plan avoids sharp instability in spending, construction, and grid balance."
+                            : obj.label === "Protect education funding"
+                              ? "Passes if school spending never falls below the model's minimum threshold."
+                              : "Passes if job losses never create repeated severe workforce shocks."
+                    }
+                  >
+                    <div className="flex items-center justify-between gap-3 rounded-xl border border-zinc-800 px-3 py-2 bg-zinc-900">
+                      <div className="text-sm text-zinc-200">{obj.label}</div>
+                      {obj.passed ? <CheckCircle2 className="w-5 h-5 text-emerald-400" /> : <AlertTriangle className="w-5 h-5 text-amber-400" />}
+                    </div>
+                  </TooltipShell>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="xl:col-span-6 space-y-4">
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-900/60 px-4 py-3 text-sm text-zinc-300">
+              <span className="text-cyan-300 font-semibold uppercase tracking-[0.25em] mr-3">Selected Stage</span>
+              <span>{STAGE_WINDOWS[selectedStage]}</span>
+              <span className="text-zinc-500 mx-3">|</span>
+              <span>Dashboard readouts are showing projected conditions by {YEARS[displayIndex]}.</span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <GaugeDial label="Grid Reliability" value={model.reliabilitySeries[displayIndex]} icon={Gauge} goodHigh tooltip="Shows how consistently the power system can meet demand by the end of the selected window. Low reliability means shortages, blackouts, or failure during stress periods. To improve it, raise storage and grid upgrades, and avoid retiring fossil capacity faster than replacements come online." />
+              <GaugeDial label="Fiscal Stress" value={model.fiscalStressSeries[displayIndex]} icon={DollarSign} dangerHigh tooltip="Shows how tightly the plan is pressing against the state budget in the selected window. Higher values mean less flexibility, more cuts, and greater budget risk. To improve it, slow expensive buildouts, protect reserves, and avoid pushing multiple spending priorities high at the same time." />
+              <GaugeDial label="Volatility" value={model.volatilitySeries[displayIndex]} icon={Activity} dangerHigh tooltip="Tracks how unstable the overall plan is by the selected stage. Big spending swings, rushed buildouts, and shaky grid balance drive this upward. To improve it, build more gradually, support renewables with storage and grid upgrades, and avoid sudden budget shifts." />
+              <GaugeDial label="Emissions" value={model.emissionsSeries[displayIndex]} icon={Factory} dangerHigh tooltip="Represents how much pollution the plan is still producing by the end of the selected window. Lower is better and is needed to meet clean energy goals. To improve it, increase wind and solar over time and retire fossil fuels steadily without crashing reliability." />
+              <GaugeDial label="Build Stress" value={model.constructionStressSeries[displayIndex]} icon={Zap} dangerHigh tooltip="Measures how hard the construction system is being pushed in the selected stage. High values suggest delays, cost overruns, and unfinished infrastructure. To improve it, spread projects across more years and avoid maxing out wind, solar, grid, and retirement speed all at once." />
+              <GaugeDial label="Available Budget" value={model.budgetBalanceSeries[displayIndex]} icon={DollarSign} tooltip="Shows how your selected stage compares to the annual budget. Straight up means on budget. Needle down means under budget. Needle up means over budget. To improve it, balance spending across categories and avoid pushing all sliders high at once." />
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <WarningLight label="Blackout Risk" active={selectedAlerts.blackout} color="red" tooltip="Lights when reliability drops low enough that the model predicts serious power shortage conditions in the selected window. To turn it off, add storage and grid support or slow fossil retirement." />
+              <WarningLight label="Budget Overload" active={selectedAlerts.overload} color="red" tooltip="Lights when budget pressure becomes severe enough in the selected window to indicate major fiscal strain. To turn it off, preserve reserves, lower some protected spending, or slow expensive buildouts." />
+              <WarningLight label="Overbuild Risk" active={selectedAlerts.overbuild} color="yellow" tooltip="Lights when infrastructure is being built faster than the model considers safely manageable in the selected stage. To turn it off, reduce build rates and spread expansion across more years." />
+              <WarningLight label="Department Cuts" active={selectedAlerts.cuts} color="yellow" tooltip="Lights when education or transportation spending falls below the model's minimum safe range in the selected window. To turn it off, raise protection for those areas or reduce pressure from energy spending." />
+              <WarningLight label="Project Delay" active={selectedAlerts.delay} color="yellow" tooltip="Lights when volatility is high enough that the model expects project slowdowns or implementation trouble in the selected window. To turn it off, smooth out spending changes and balance renewables with storage and grid upgrades." />
+              <WarningLight label="2040 Deadline Missed" active={selectedAlerts.deadline} color="red" tooltip="Lights once the plan is on track to miss the 2040 clean energy target. To turn it off, increase clean generation and phase down fossil fuels earlier." />
+              <WarningLight label="Job Loss Spike" active={selectedAlerts.jobs} color="red" tooltip="Lights when workforce disruption becomes severe in the selected stage because too many jobs are lost too quickly. To turn it off, increase retraining and avoid abrupt retirements." />
+              <WarningLight label="Winter Shortfall" active={selectedAlerts.winter} color="yellow" tooltip="Lights when the plan looks weak during a winter demand period by this point in the timeline. To turn it off, strengthen reliability with storage, grid upgrades, or a slower retirement path." />
+              <WarningLight label="Resilience Weakness" active={selectedAlerts.drought} color="yellow" tooltip="Lights when storage and grid support are both low in the selected stage, making the system less able to handle stress or disruption. To turn it off, raise storage and grid investment together." />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <MiniScreen title="Current Budget Mix" tooltip="This screen shows the budget split by the end of the selected window. If one category looks squeezed too far, rebalance protections or slow energy spending in that stage.">
+                <TinyBarStack
+                  data={[
+                    { name: "Education", value: model.educationSpend[displayIndex], color: "#38bdf8" },
+                    { name: "Transport", value: model.transportationSpend[displayIndex], color: "#f59e0b" },
+                    { name: "Health", value: model.healthSpend[displayIndex], color: "#a78bfa" },
+                    { name: "Safety", value: model.safetySpend[displayIndex], color: "#ef4444" },
+                    { name: "Energy", value: model.energyInvestment[displayIndex], color: "#22c55e" },
+                    { name: "Reserve", value: model.reserveSpend[displayIndex], color: "#e879f9" },
+                  ]}
+                />
+              </MiniScreen>
+
+              <TooltipShell text="Shows the workforce result by the end of the selected window. It compares jobs created by new energy and grid investment against jobs lost through retirements and cuts.">
+                <Card className="bg-zinc-900/90 border-zinc-700 rounded-2xl shadow-2xl">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center gap-2 text-zinc-100 text-sm font-semibold tracking-wide uppercase">
+                      <Briefcase className="w-4 h-4" /> Job Loss Counter
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="rounded-2xl border border-rose-900 bg-black px-4 py-5 text-center">
+                      <div className="text-[11px] uppercase tracking-[0.35em] text-zinc-500 mb-2">Net Jobs by {YEARS[displayIndex]}</div>
+                      <div className={`text-4xl font-black tabular-nums ${model.netJobsSeries[displayIndex] < 0 ? "text-rose-400" : "text-emerald-300"}`}>
+                        {model.netJobsSeries[displayIndex] > 0 ? "+" : ""}{model.netJobsSeries[displayIndex].toLocaleString()}
+                      </div>
+                      <div className="text-xs text-zinc-400 mt-2">Total displaced workers so far: {model.jobsLostYearly.slice(0, displayIndex + 1).reduce((a, b) => a + b, 0).toLocaleString()}</div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TooltipShell>
+            </div>
+          </div>
+
+          <div className="xl:col-span-3 space-y-4">
+            <Card className="bg-zinc-950 border-zinc-800 rounded-2xl">
+              <CardHeader>
+                <TooltipShell text="These controls now apply only to the selected five-year window. Build the transition step by step, then move to the next window and continue the plan."><CardTitle className="text-zinc-100 text-sm uppercase tracking-[0.3em]">Energy Build Controls</CardTitle></TooltipShell>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <ControlSlider tooltipPosition="left" label="Wind Build Rate" value={controls.wind} onChange={(v) => update("wind", v)} icon={Power} accent="text-cyan-300" subtitle={`Build added in ${STAGE_WINDOWS[selectedStage]}.`} tooltip="Controls how aggressively the state builds wind energy in the selected time window. More wind lowers emissions but can raise build stress and grid dependence if pushed too fast. Increase it to cut emissions, but pair it with storage and grid upgrades." />
+                <ControlSlider tooltipPosition="left" label="Solar Build Rate" value={controls.solar} onChange={(v) => update("solar", v)} icon={Zap} accent="text-yellow-300" subtitle={`Build added in ${STAGE_WINDOWS[selectedStage]}.`} tooltip="Controls how aggressively the state builds solar energy in the selected time window. More solar lowers emissions, but without support it can increase instability in some periods. Increase it to lower emissions, but pair it with storage and grid upgrades." />
+                <ControlSlider tooltipPosition="left" label="Storage Build Rate" value={controls.storage} onChange={(v) => update("storage", v)} icon={BatteryIcon} accent="text-emerald-300" subtitle={`Build added in ${STAGE_WINDOWS[selectedStage]}.`} tooltip="Adds batteries or other storage in the selected window that help balance wind and solar. Higher settings usually improve reliability and resilience. Increase this first when blackout risk, winter shortfall, or resilience weakness appears." />
+                <ControlSlider tooltipPosition="left" label="Grid Upgrade Pace" value={controls.grid} onChange={(v) => update("grid", v)} icon={Activity} accent="text-violet-300" subtitle={`Build added in ${STAGE_WINDOWS[selectedStage]}.`} tooltip="Represents upgrades to transmission and grid management in the selected window. Higher settings make new energy easier to use reliably across the state. Increase this when volatility, winter shortfall, or renewable instability starts rising." />
+                <ControlSlider tooltipPosition="left" label="Fossil Retirement Speed" value={controls.retire} onChange={(v) => update("retire", v)} icon={Factory} accent="text-rose-300" subtitle={`Retirements in ${STAGE_WINDOWS[selectedStage]}.`} tooltip="Controls how quickly fossil-fuel infrastructure is phased out in the selected window. Faster retirement cuts emissions sooner but can hurt jobs and reliability if replacements lag. Increase it only when reliability, storage, grid support, and retraining are strong enough to handle the change." />
+              </CardContent>
+            </Card>
+
+            <Card className="bg-zinc-950 border-zinc-800 rounded-2xl">
+              <CardHeader>
+                <TooltipShell text="Set a long-term target for each energy build type, then watch the progress bar fill as students add more across multiple five-year windows. This lets them choose a focus area and see whether they are following through."><CardTitle className="text-zinc-100 text-sm uppercase tracking-[0.3em]">Overall Goal Settings</CardTitle></TooltipShell>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <GoalProgressRow label="Wind" goal={controls.windGoal} progress={currentGoalProgress.wind} onChange={(v) => update("windGoal", v)} colorClass="text-cyan-300" tooltip="Sets the overall wind target for the full plan. Raise this if wind is the strategy focus, then use the stage sliders above to work toward it over time." />
+                <GoalProgressRow label="Solar" goal={controls.solarGoal} progress={currentGoalProgress.solar} onChange={(v) => update("solarGoal", v)} colorClass="text-yellow-300" tooltip="Sets the overall solar target for the full plan. Use it to define how heavily the state will rely on solar across all stages." />
+                <GoalProgressRow label="Storage" goal={controls.storageGoal} progress={currentGoalProgress.storage} onChange={(v) => update("storageGoal", v)} colorClass="text-emerald-300" tooltip="Sets the overall storage target for the full plan. This is useful when reliability and resilience are the main focus." />
+                <GoalProgressRow label="Grid" goal={controls.gridGoal} progress={currentGoalProgress.grid} onChange={(v) => update("gridGoal", v)} colorClass="text-violet-300" tooltip="Sets the overall grid-upgrade target for the full plan. Use it when transmission and grid stability are a major priority." />
+                <GoalProgressRow label="Fossil Retirement" goal={controls.retireGoal} progress={currentGoalProgress.retire} onChange={(v) => update("retireGoal", v)} colorClass="text-rose-300" tooltip="Sets the overall fossil-retirement target for the full plan. Use it to decide how aggressively the state will phase out fossil infrastructure across the timeline." />
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+function BatteryIcon(props) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <rect x="2" y="7" width="18" height="10" rx="2" ry="2"></rect>
+      <line x1="22" y1="11" x2="22" y2="13"></line>
+      <line x1="6" y1="10" x2="6" y2="14"></line>
+      <line x1="10" y1="10" x2="10" y2="14"></line>
+      <line x1="14" y1="10" x2="14" y2="14"></line>
+    </svg>
+  );
+}
