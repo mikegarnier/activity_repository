@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Model Windmill Simulation</title>
+  <style>
+    :root {
+      --bg: #eef4f8;
+      --panel: #ffffff;
+      --line: #1f2937;
+      --muted: #6b7280;
+      --accent: #2563eb;
+      --good: #15803d;
+      --warn: #b45309;
+      --shadow: 0 10px 24px rgba(0,0,0,0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: #111827;
+    }
+
+    .wrap {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 18px;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: 30px;
+    }
+
+    .subtitle {
+      margin: 0 0 18px;
+      color: var(--muted);
+      line-height: 1.5;
+      font-size: 16px;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .panel {
+      background: var(--panel);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      padding: 16px;
+    }
+
+    .panel h2 {
+      margin: 0 0 12px;
+      font-size: 20px;
+      border-bottom: 2px solid #e5e7eb;
+      padding-bottom: 8px;
+    }
+
+    .control-group {
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .control-group:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    label, .label {
+      display: block;
+      font-weight: 700;
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+
+    select, input[type="range"], button {
+      width: 100%;
+    }
+
+    select, button {
+      font-size: 15px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid #cbd5e1;
+      background: white;
+    }
+
+    button {
+      cursor: pointer;
+      font-weight: 700;
+      transition: transform 0.08s ease, background 0.2s ease;
+    }
+
+    button:hover { transform: translateY(-1px); }
+    button.primary {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+
+    button.secondary {
+      background: #f8fafc;
+    }
+
+    .btn-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .range-readout {
+      font-size: 14px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .status-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .stat {
+      background: #f8fafc;
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      padding: 12px;
+    }
+
+    .stat-title {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 5px;
+    }
+
+    .stat-value {
+      font-size: 28px;
+      font-weight: 800;
+    }
+
+    .small {
+      font-size: 16px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .sim-panel {
+      position: relative;
+      overflow: hidden;
+      min-height: 760px;
+    }
+
+    svg {
+      width: 100%;
+      height: auto;
+      display: block;
+      background: linear-gradient(180deg, #dbeafe 0%, #eff6ff 38%, #f8fafc 38%, #f8fafc 100%);
+      border-radius: 16px;
+    }
+
+    .legend {
+      margin-top: 12px;
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .meter-box {
+      position: absolute;
+      top: 18px;
+      right: 18px;
+      background: rgba(255,255,255,0.95);
+      border: 2px solid #cbd5e1;
+      border-radius: 14px;
+      padding: 14px 16px;
+      min-width: 200px;
+      box-shadow: var(--shadow);
+    }
+
+    .meter-label {
+      font-size: 14px;
+      color: var(--muted);
+      margin-bottom: 6px;
+      font-weight: 700;
+    }
+
+    .meter-value {
+      font-size: 40px;
+      font-weight: 900;
+      line-height: 1;
+    }
+
+    .meter-unit {
+      font-size: 18px;
+      color: var(--muted);
+      font-weight: 700;
+      margin-left: 6px;
+    }
+
+    .note-box {
+      margin-top: 12px;
+      background: #fff7ed;
+      border: 1px solid #fdba74;
+      border-radius: 12px;
+      padding: 10px 12px;
+      color: #9a3412;
+      font-size: 16px;
+      line-height: 1.45;
+    }
+
+    @media (max-width: 1050px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+      .sim-panel {
+        min-height: 500px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Model Windmill Investigation</h1>
+    <p class="subtitle">
+      Build a model windmill, turn on the box fan, and test how blade size, shape, material, number of blades, and blade angle affect energy output.
+    </p>
+
+    <div class="layout">
+      <div class="panel">
+        <h2>Windmill Design Controls</h2>
+
+        <div class="control-group">
+          <label for="bladeType">Blade type</label>
+          <select id="bladeType">
+            <option value="rect_card_small">Small rectangular cardboard</option>
+            <option value="rect_card_medium" selected>Medium rectangular cardboard</option>
+            <option value="rect_card_large">Large rectangular cardboard</option>
+            <option value="rect_card_xlarge">Extra large rectangular cardboard</option>
+            <option value="rect_wood_medium">Medium rectangular wood</option>
+            <option value="oval_card_medium">Medium oval cardboard</option>
+            <option value="triangle_card_medium">Medium triangular cardboard</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <label for="bladeCount">Number of blades</label>
+          <input id="bladeCount" type="range" min="0" max="6" step="1" value="4" />
+          <div class="range-readout"><span id="bladeCountValue">4</span> blades</div>
+        </div>
+
+        <div class="control-group">
+          <label for="bladePitch">Blade angle</label>
+          <input id="bladePitch" type="range" min="0" max="90" step="1" value="45" />
+          <div class="range-readout"><span id="bladePitchValue">45</span>° pitch to wind</div>
+        </div>
+
+        <div class="control-group">
+          <div class="label">Fan power</div>
+          <div class="btn-row">
+            <button id="fanToggle" class="primary">Fan: ON</button>
+            <button id="resetBtn" class="secondary">Reset design</button>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <div class="small">
+            Suggested student questions: Which blade count produces the most energy? Is a bigger blade always better? Does wood perform differently than cardboard? Is there a best blade angle?
+          </div>
+          <div class="note-box">
+            This simulation is intentionally simplified for classroom testing. It behaves logically, but it is not a full engineering model.
+          </div>
+        </div>
+      </div>
+
+      <div class="panel sim-panel">
+        <div class="meter-box">
+          <div class="meter-label">Energy Sensor</div>
+          <div><span id="mwReadout" class="meter-value">286</span><span class="meter-unit">mW</span></div>
+        </div>
+
+        <svg viewBox="0 0 1100 760" aria-label="Windmill simulation scene">
+          <defs>
+            <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="8" refY="3.5" orient="auto">
+              <polygon points="0 0, 10 3.5, 0 7" fill="#60a5fa"></polygon>
+            </marker>
+            <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+              <feDropShadow dx="0" dy="3" stdDeviation="4" flood-opacity="0.18"/>
+            </filter>
+          </defs>
+
+          <rect x="0" y="0" width="1100" height="760" fill="transparent"></rect>
+          <rect x="0" y="290" width="1100" height="470" fill="#e5e7eb"></rect>
+          <rect x="0" y="650" width="1100" height="110" fill="#d1d5db"></rect>
+
+          <!-- airflow arrows -->
+          <g id="airflowGroup"></g>
+
+          <!-- box fan -->
+          <g id="fanGroup" transform="translate(140 405)" filter="url(#shadow)">
+            <rect x="-90" y="-120" width="180" height="180" rx="16" fill="#f9fafb" stroke="#374151" stroke-width="4"></rect>
+            <circle cx="0" cy="-30" r="62" fill="#e5e7eb" stroke="#6b7280" stroke-width="3"></circle>
+            <circle cx="0" cy="-30" r="8" fill="#6b7280"></circle>
+            <line x1="-70" y1="-30" x2="70" y2="-30" stroke="#9ca3af" stroke-width="4"></line>
+            <line x1="0" y1="-100" x2="0" y2="40" stroke="#9ca3af" stroke-width="4"></line>
+            <line x1="-50" y1="-80" x2="50" y2="20" stroke="#9ca3af" stroke-width="4"></line>
+            <line x1="-50" y1="20" x2="50" y2="-80" stroke="#9ca3af" stroke-width="4"></line>
+            <g id="fanBlades" transform="rotate(0 0 -30)">
+              <ellipse cx="0" cy="-72" rx="10" ry="28" fill="#94a3b8"></ellipse>
+              <ellipse cx="0" cy="-72" rx="10" ry="28" fill="#94a3b8" transform="rotate(120 0 -30)"></ellipse>
+              <ellipse cx="0" cy="-72" rx="10" ry="28" fill="#94a3b8" transform="rotate(240 0 -30)"></ellipse>
+            </g>
+            <rect x="-12" y="60" width="24" height="80" rx="8" fill="#9ca3af"></rect>
+            <rect x="-55" y="136" width="110" height="16" rx="8" fill="#6b7280"></rect>
+            <text x="0" y="190" text-anchor="middle" font-size="26" font-weight="700" fill="#1f2937">Box Fan</text>
+            <text id="fanStatusText" x="0" y="220" text-anchor="middle" font-size="22" font-weight="700" fill="#15803d">ON</text>
+          </g>
+
+          <!-- wire to sensor -->
+          <path d="M760 390 C 860 390, 900 410, 960 410" fill="none" stroke="#ef4444" stroke-width="6"></path>
+          <circle cx="760" cy="390" r="5" fill="#ef4444"></circle>
+          <circle cx="960" cy="410" r="5" fill="#ef4444"></circle>
+
+          <!-- windmill tower -->
+          <g id="towerGroup" filter="url(#shadow)">
+            <polygon points="690,650 730,650 750,430 670,430" fill="#d1d5db" stroke="#374151" stroke-width="4"></polygon>
+            <line x1="690" y1="650" x2="730" y2="430" stroke="#6b7280" stroke-width="3"></line>
+            <line x1="730" y1="650" x2="690" y2="430" stroke="#6b7280" stroke-width="3"></line>
+            <line x1="680" y1="540" x2="740" y2="540" stroke="#6b7280" stroke-width="3"></line>
+            <line x1="675" y1="485" x2="745" y2="485" stroke="#6b7280" stroke-width="3"></line>
+            <rect x="700" y="364" width="90" height="48" rx="10" fill="#e5e7eb" stroke="#374151" stroke-width="4"></rect>
+            <rect x="780" y="380" width="30" height="16" rx="6" fill="#9ca3af" stroke="#374151" stroke-width="3"></rect>
+          </g>
+
+          <!-- rotor -->
+          <g id="rotorGroup" transform="translate(760 390)">
+            <circle r="24" fill="#6b7280" stroke="#374151" stroke-width="4"></circle>
+            <circle r="7" fill="#111827"></circle>
+            <g id="bladeGroup"></g>
+          </g>
+
+          <!-- sensor graphic -->
+          <!-- blade angle viewing window -->
+          <g id="pitchWindow" transform="translate(560 135)" filter="url(#shadow)">
+            <rect x="-230" y="-105" width="460" height="210" rx="18" fill="#ffffff" stroke="#334155" stroke-width="4"></rect>
+            <text x="0" y="-72" text-anchor="middle" font-size="24" font-weight="700" fill="#1f2937">Blade Angle View</text>
+            <line x1="-92" y1="22" x2="92" y2="22" stroke="#9ca3af" stroke-width="3" stroke-dasharray="8 7"></line>
+            <line x1="0" y1="-18" x2="0" y2="62" stroke="#cbd5e1" stroke-width="2"></line>
+            <g id="pitchCrossSection" transform="translate(0 22)">
+              <rect x="-70" y="-10" width="140" height="20" rx="4" fill="#d6b98a" stroke="#5b4632" stroke-width="3"></rect>
+              <line x1="0" y1="0" x2="88" y2="0" stroke="#2563eb" stroke-width="4" marker-end="url(#arrowhead)"></line>
+            </g>
+
+            <path id="pitchAngleArc" d="M 58 22 A 58 58 0 0 0 58 22" fill="none" stroke="#f59e0b" stroke-width="4"></path>
+            <text id="pitchAngleText" x="0" y="86" text-anchor="middle" font-size="26" font-weight="800" fill="#b45309">18°</text>
+            <text x="98" y="27" font-size="18" font-weight="700" fill="#1f2937">flat to the wind</text>
+            <text x="0" y="-45" text-anchor="middle" font-size="18" font-weight="700" fill="#1f2937">cuts the wind</text>
+          </g>
+
+          <g id="sensorGraphic" transform="translate(965 410)" filter="url(#shadow)">
+            <rect x="0" y="-60" width="100" height="120" rx="14" fill="#ffffff" stroke="#334155" stroke-width="4"></rect>
+            <rect x="12" y="-40" width="76" height="38" rx="8" fill="#111827"></rect>
+            <text x="50" y="-15" text-anchor="middle" font-size="17" fill="#86efac" font-family="monospace">mW</text>
+            <circle cx="28" cy="26" r="8" fill="#22c55e"></circle>
+            <circle cx="72" cy="26" r="8" fill="#f59e0b"></circle>
+            <text x="50" y="92" text-anchor="middle" font-size="18" font-weight="700" fill="#1f2937">Sensor</text>
+          </g>
+        </svg>
+
+        <div class="legend">
+          Try comparing designs systematically: keep one variable the same while changing another. For example, test 2, 4, and 6 blades at the same angle.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const state = {
+      bladeType: 'rect_card_medium',
+      bladeCount: 4,
+      bladePitch: 45,
+      fanOn: true,
+      fanSpeed: 2,
+      rotorAngle: 0,
+      fanAngle: 0,
+      displayedMw: 0,
+      displayedRpm: 0
+    };
+
+    const bladeProfiles = {
+      rect_card_small: {
+        label: 'Small rectangular cardboard',
+        material: 'cardboard',
+        shape: 'rect',
+        area: 0.72,
+        drag: 0.92,
+        inertia: 0.72,
+        stability: 1.05,
+        maxCountPenalty: 0.95,
+        sizeLabel: 'small'
+      },
+      rect_card_medium: {
+        label: 'Medium rectangular cardboard',
+        material: 'cardboard',
+        shape: 'rect',
+        area: 1.0,
+        drag: 1.0,
+        inertia: 1.0,
+        stability: 1.0,
+        maxCountPenalty: 1.0,
+        sizeLabel: 'medium'
+      },
+      rect_card_large: {
+        label: 'Large rectangular cardboard',
+        material: 'cardboard',
+        shape: 'rect',
+        area: 1.28,
+        drag: 1.08,
+        inertia: 1.22,
+        stability: 0.94,
+        maxCountPenalty: 0.92,
+        sizeLabel: 'large'
+      },
+      rect_card_xlarge: {
+        label: 'Extra large rectangular cardboard',
+        material: 'cardboard',
+        shape: 'rect',
+        area: 1.58,
+        drag: 1.13,
+        inertia: 1.45,
+        stability: 0.84,
+        maxCountPenalty: 0.82,
+        sizeLabel: 'xlarge'
+      },
+      rect_wood_medium: {
+        label: 'Medium rectangular wood',
+        material: 'wood',
+        shape: 'rect',
+        area: 1.0,
+        drag: 0.95,
+        inertia: 1.22,
+        stability: 1.12,
+        maxCountPenalty: 0.96,
+        sizeLabel: 'medium'
+      },
+      oval_card_medium: {
+        label: 'Medium oval cardboard',
+        material: 'cardboard',
+        shape: 'oval',
+        area: 0.94,
+        drag: 0.9,
+        inertia: 0.96,
+        stability: 1.08,
+        maxCountPenalty: 1.02,
+        sizeLabel: 'medium'
+      },
+      triangle_card_medium: {
+        label: 'Medium triangular cardboard',
+        material: 'cardboard',
+        shape: 'triangle',
+        area: 0.88,
+        drag: 1.06,
+        inertia: 0.9,
+        stability: 0.9,
+        maxCountPenalty: 0.98,
+        sizeLabel: 'medium'
+      }
+    };
+
+    const el = {
+      bladeType: document.getElementById('bladeType'),
+      bladeCount: document.getElementById('bladeCount'),
+      bladePitch: document.getElementById('bladePitch'),
+      bladeCountValue: document.getElementById('bladeCountValue'),
+      bladePitchValue: document.getElementById('bladePitchValue'),
+      fanToggle: document.getElementById('fanToggle'),
+      resetBtn: document.getElementById('resetBtn'),
+      fanStatusText: document.getElementById('fanStatusText'),
+      bladeGroup: document.getElementById('bladeGroup'),
+      pitchCrossSection: document.getElementById('pitchCrossSection'),
+      pitchAngleArc: document.getElementById('pitchAngleArc'),
+      pitchAngleText: document.getElementById('pitchAngleText'),
+      airflowGroup: document.getElementById('airflowGroup'),
+      fanBlades: document.getElementById('fanBlades'),
+      mwReadout: document.getElementById('mwReadout'),
+    };
+
+    function fanSpeedLabel(v) {
+      return ['Off', 'Low', 'Medium', 'High'][v];
+    }
+
+    function clamp(n, min, max) {
+      return Math.max(min, Math.min(max, n));
+    }
+
+    function smoothToward(current, target, factor) {
+      return current + (target - current) * factor;
+    }
+
+    function getPitchEfficiency(angle) {
+      const radians = (angle * Math.PI) / 180;
+      const faceWind = Math.cos(radians);
+      const tangentialPush = Math.sin(radians);
+      const efficiency = faceWind * tangentialPush;
+      return clamp((efficiency / 0.5) * 0.98, 0, 1);
+    }
+
+    function getBladeCountEfficiency(count) {
+      const lookup = {
+        0: 0,
+        1: 0.26,
+        2: 0.58,
+        3: 0.86,
+        4: 1.0,
+        5: 0.96,
+        6: 0.89
+      };
+      return lookup[count] ?? 0;
+    }
+
+    function getFanWindFactor() {
+      if (!state.fanOn) return 0;
+      return [0, 0.55, 0.82, 1.0][state.fanSpeed];
+    }
+
+    function bladeDimensions(profile) {
+      switch (profile.shape) {
+        case 'oval':
+          return { length: 100, width: 34 };
+        case 'triangle':
+          return { length: 100, width: 40 };
+        default:
+          if (profile.sizeLabel === 'small') return { length: 78, width: 24 };
+          if (profile.sizeLabel === 'large') return { length: 115, width: 28 };
+          if (profile.sizeLabel === 'xlarge') return { length: 138, width: 32 };
+          return { length: 98, width: 26 };
+      }
+    }
+
+    function materialColor(profile) {
+      return profile.material === 'wood' ? '#c08457' : '#d6b98a';
+    }
+
+    function computePerformance() {
+      const profile = bladeProfiles[state.bladeType];
+      const wind = getFanWindFactor();
+      const countEff = getBladeCountEfficiency(state.bladeCount);
+      const pitchEff = getPitchEfficiency(state.bladePitch);
+      const areaFactor = profile.area;
+      const dragFactor = profile.drag;
+      const stability = profile.stability;
+      const inertiaPenalty = 1 / profile.inertia;
+      const countPenalty = state.bladeCount >= 5 ? profile.maxCountPenalty : 1;
+
+      const rawEfficiency = wind * countEff * pitchEff * areaFactor * dragFactor * stability * inertiaPenalty * countPenalty;
+      const efficiency = clamp(rawEfficiency, 0, 1.12);
+
+      let rpm = 0;
+      let mw = 0;
+
+      if (state.bladeCount > 0 && wind > 0) {
+        rpm = 40 + (210 * efficiency);
+        mw = efficiency * 430;
+
+        if (profile.shape === 'triangle') {
+          rpm *= 1.07;
+          mw *= 0.96;
+        }
+        if (profile.shape === 'oval') {
+          rpm *= 0.95;
+          mw *= 0.98;
+        }
+        if (profile.material === 'wood') {
+          rpm *= 0.92;
+          mw *= 1.06;
+        }
+        if (profile.sizeLabel === 'xlarge' && state.bladeCount >= 5) {
+          rpm *= 0.86;
+          mw *= 0.84;
+        }
+      }
+
+      rpm = clamp(rpm, 0, 280);
+      mw = clamp(mw, 0, 520);
+
+      return {
+        efficiencyPercent: Math.round(clamp(efficiency * 100, 0, 100)),
+        rpm: Math.round(rpm),
+        mw: Math.round(mw)
+      };
+    }
+
+    function renderBlades() {
+      const profile = bladeProfiles[state.bladeType];
+      const dims = bladeDimensions(profile);
+      const count = state.bladeCount;
+      const pitch = state.bladePitch;
+      const hubOffset = 22;
+
+      if (count === 0) {
+        el.bladeGroup.innerHTML = '';
+        return;
+      }
+
+      const color = materialColor(profile);
+      const stroke = '#5b4632';
+      const widthScale = Math.max(0.04, Math.cos((pitch * Math.PI) / 180));
+      const apparentWidth = Math.max(2, dims.width * widthScale);
+
+      let markup = '';
+
+      for (let i = 0; i < count; i++) {
+        const angle = (360 / count) * i;
+        let shape = '';
+
+        if (profile.shape === 'oval') {
+          shape = `<ellipse cx="${dims.length / 2}" cy="0" rx="${dims.length / 2}" ry="${apparentWidth / 2}" fill="${color}" stroke="${stroke}" stroke-width="3"></ellipse>`;
+        } else if (profile.shape === 'triangle') {
+          const half = apparentWidth / 2;
+          shape = `<polygon points="0,0 ${dims.length},${-half} ${dims.length},${half}" fill="${color}" stroke="${stroke}" stroke-width="3"></polygon>`;
+        } else {
+          shape = `<rect x="0" y="${-apparentWidth / 2}" width="${dims.length}" height="${apparentWidth}" rx="2" fill="${color}" stroke="${stroke}" stroke-width="3"></rect>`;
+        }
+
+        markup += `
+          <g transform="rotate(${angle})">
+            <line x1="${hubOffset}" y1="0" x2="${hubOffset + 18}" y2="0" stroke="#374151" stroke-width="5" stroke-linecap="round"></line>
+            <g transform="translate(${hubOffset + 18},0)">
+              ${shape}
+            </g>
+          </g>
+        `;
+      }
+
+      el.bladeGroup.innerHTML = markup;
+    }
+
+    function renderPitchWindow() {
+      const profile = bladeProfiles[state.bladeType];
+      const color = materialColor(profile);
+      const pitch = state.bladePitch;
+      const radians = (pitch * Math.PI) / 180;
+      const arcRadius = 58;
+      const endX = Math.cos(radians) * arcRadius;
+      const endY = -Math.sin(radians) * arcRadius;
+
+      let thickness = 20;
+      if (profile.material === 'wood') thickness = 24;
+      if (profile.shape === 'oval') thickness = 28;
+      if (profile.shape === 'triangle') thickness = 22;
+      if (profile.sizeLabel === 'small') thickness -= 4;
+      if (profile.sizeLabel === 'large') thickness += 3;
+      if (profile.sizeLabel === 'xlarge') thickness += 6;
+
+      let crossSection = '';
+      if (profile.shape === 'oval') {
+        crossSection = `<ellipse cx="0" cy="0" rx="72" ry="${thickness / 2}" fill="${color}" stroke="#5b4632" stroke-width="3"></ellipse>`;
+      } else if (profile.shape === 'triangle') {
+        crossSection = `<polygon points="-70,${thickness / 2} 70,0 -70,${-thickness / 2}" fill="${color}" stroke="#5b4632" stroke-width="3"></polygon>`;
+      } else {
+        crossSection = `<rect x="-70" y="${-thickness / 2}" width="140" height="${thickness}" rx="4" fill="${color}" stroke="#5b4632" stroke-width="3"></rect>`;
+      }
+
+      crossSection += `<line x1="0" y1="0" x2="88" y2="0" stroke="#2563eb" stroke-width="4" marker-end="url(#arrowhead)"></line>`;
+
+      el.pitchCrossSection.innerHTML = crossSection;
+      el.pitchCrossSection.setAttribute('transform', `translate(0 22) rotate(${-pitch})`);
+      el.pitchAngleArc.setAttribute('d', `M 58 22 A 58 58 0 0 0 ${endX} ${22 + endY}`);
+      el.pitchAngleText.textContent = `${pitch}°`;
+    }
+
+    function renderAirflow() {
+      const wind = getFanWindFactor();
+      let markup = '';
+      const opacity = wind === 0 ? 0.12 : 0.2 + wind * 0.45;
+      const count = wind === 0 ? 4 : 6;
+
+      for (let i = 0; i < count; i++) {
+        const y = 290 + i * 34;
+        const length = 110 + wind * 180;
+        markup += `
+          <line x1="250" y1="${y}" x2="${250 + length}" y2="${y}" stroke="#60a5fa" stroke-width="6" stroke-linecap="round" marker-end="url(#arrowhead)" opacity="${opacity}"></line>
+        `;
+      }
+
+      el.airflowGroup.innerHTML = markup;
+    }
+
+    function updateUiText() {
+      el.bladeCountValue.textContent = state.bladeCount;
+      el.bladePitchValue.textContent = state.bladePitch;
+      el.fanToggle.textContent = `Fan: ${state.fanOn ? 'ON' : 'OFF'}`;
+      el.fanToggle.className = state.fanOn ? 'primary' : 'secondary';
+      el.fanStatusText.textContent = state.fanOn ? 'ON' : 'OFF';
+      el.fanStatusText.setAttribute('fill', state.fanOn ? '#15803d' : '#b91c1c');
+    }
+
+    function syncInputsToState() {
+      state.bladeType = el.bladeType.value;
+      state.bladeCount = Number(el.bladeCount.value);
+      state.bladePitch = Number(el.bladePitch.value);
+    }
+
+    function resetDesign() {
+      state.bladeType = 'rect_card_medium';
+      state.bladeCount = 4;
+      state.bladePitch = 45;
+      state.fanSpeed = 2;
+      state.fanOn = true;
+
+      el.bladeType.value = state.bladeType;
+      el.bladeCount.value = state.bladeCount;
+      el.bladePitch.value = state.bladePitch;
+
+      updateUiText();
+      renderBlades();
+      renderPitchWindow();
+      renderAirflow();
+    }
+
+    el.bladeType.addEventListener('input', () => {
+      syncInputsToState();
+      updateUiText();
+      renderBlades();
+      renderPitchWindow();
+    });
+
+    el.bladeCount.addEventListener('input', () => {
+      syncInputsToState();
+      updateUiText();
+      renderBlades();
+    });
+
+    el.bladePitch.addEventListener('input', () => {
+      syncInputsToState();
+      updateUiText();
+      renderBlades();
+      renderPitchWindow();
+    });
+
+    el.fanToggle.addEventListener('click', () => {
+      state.fanOn = !state.fanOn;
+      updateUiText();
+      renderAirflow();
+    });
+
+    el.resetBtn.addEventListener('click', () => {
+      resetDesign();
+    });
+
+    function animate() {
+      const perf = computePerformance();
+      state.displayedMw = smoothToward(state.displayedMw, perf.mw, 0.08);
+      state.displayedRpm = smoothToward(state.displayedRpm, perf.rpm, 0.08);
+
+      const rotorStep = state.displayedRpm / 65;
+      const fanStep = state.fanOn ? (2 + state.fanSpeed * 3) : 0;
+      state.rotorAngle = (state.rotorAngle + rotorStep) % 360;
+      state.fanAngle = (state.fanAngle + fanStep) % 360;
+
+      el.bladeGroup.setAttribute('transform', `rotate(${state.rotorAngle})`);
+      el.fanBlades.setAttribute('transform', `rotate(${state.fanAngle} 0 -30)`);
+
+      el.mwReadout.textContent = Math.round(state.displayedMw);
+
+      requestAnimationFrame(animate);
+    }
+
+    resetDesign();
+    animate();
+  </script>
+</body>
+</html>
