@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Simple Solar Panel Simulation</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: #f4f7fb;
+      color: #222;
+      text-align: center;
+    }
+
+    h1 {
+      margin-top: 0;
+      font-size: 28px;
+    }
+
+    .controls {
+      max-width: 800px;
+      margin: 0 auto 16px;
+      background: white;
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    .control-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin: 10px 0;
+    }
+
+    label {
+      font-weight: bold;
+      min-width: 180px;
+      text-align: right;
+    }
+
+    input[type="range"] {
+      width: 280px;
+    }
+
+    .meter {
+      font-size: 30px;
+      font-weight: bold;
+      color: #0b5ed7;
+      margin-top: 10px;
+    }
+
+    .sim-wrap {
+      max-width: 900px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 12px;
+      padding: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    canvas {
+      width: 100%;
+      max-width: 900px;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+      background: linear-gradient(to bottom, #bfe4ff 0%, #e8f6ff 68%, #d5e8b0 68%, #b8d48b 100%);
+      border-radius: 10px;
+    }
+
+    .note {
+      max-width: 850px;
+      margin: 14px auto 0;
+      font-size: 14px;
+      color: #444;
+      line-height: 1.4;
+    }
+  </style>
+</head>
+<body>
+  <h1>Solar Panel Angle Simulation</h1>
+  <p>Check every hour of the day from 8am to 3pm, deciding what the best angle for each time of day.</p>
+
+  <div class="controls">
+    <div class="control-row">
+      <label for="timeSlider">Time of Day:</label>
+      <input type="range" id="timeSlider" min="6" max="18" step="0.25" value="12" />
+      <span id="timeLabel">12:00 PM</span>
+    </div>
+
+    <div class="control-row">
+      <label for="tiltSlider">Panel Tilt (0° = flat):</label>
+      <input type="range" id="tiltSlider" min="-90" max="+90" step="1" value="35" />
+      <span id="tiltLabel">35°</span>
+    </div>
+
+    <div class="meter">Power Output: <span id="mwValue">0</span> mW</div>
+  </div>
+
+  <div class="sim-wrap">
+    <canvas id="simCanvas" width="900" height="500"></canvas>
+  </div>
+
+  <div class="note">
+    Students can change the <strong>time of day</strong> to move the sun and change the <strong>panel tilt</strong> to see how alignment affects power output. This is a simplified model meant for learning, not a real engineering calculator.
+  </div>
+
+  <script>
+    const canvas = document.getElementById('simCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const timeSlider = document.getElementById('timeSlider');
+    const tiltSlider = document.getElementById('tiltSlider');
+    const timeLabel = document.getElementById('timeLabel');
+    const tiltLabel = document.getElementById('tiltLabel');
+    const mwValue = document.getElementById('mwValue');
+
+    function formatTime(decimalHour) {
+      const hours = Math.floor(decimalHour);
+      const minutes = Math.round((decimalHour - hours) * 60);
+      const adjustedMinutes = minutes === 60 ? 0 : minutes;
+      const adjustedHours = minutes === 60 ? hours + 1 : hours;
+
+      const suffix = adjustedHours >= 12 ? 'PM' : 'AM';
+      let h12 = adjustedHours % 12;
+      if (h12 === 0) h12 = 12;
+      return `${h12}:${String(adjustedMinutes).padStart(2, '0')} ${suffix}`;
+    }
+
+    function draw() {
+      const time = parseFloat(timeSlider.value);
+      const tilt = parseFloat(tiltSlider.value);
+
+      timeLabel.textContent = formatTime(time);
+      tiltLabel.textContent = `${tilt}°`;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const groundY = 340;
+      const panelBaseX = 450;
+      const panelBaseY = groundY;
+      const panelLength = 140;
+
+      // Sun path from 6 AM to 6 PM
+      const t = (time - 6) / 12; // 0 to 1
+      const sunX = 100 + t * 700;
+      const sunY = 300 - Math.sin(Math.PI * t) * 220;
+
+      // Draw sun
+      ctx.beginPath();
+      ctx.arc(sunX, sunY, 28, 0, Math.PI * 2);
+      ctx.fillStyle = '#FFD54A';
+      ctx.fill();
+      ctx.strokeStyle = '#E0A800';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      for (let i = 0; i < 12; i++) {
+        const a = (Math.PI * 2 * i) / 12;
+        const r1 = 36;
+        const r2 = 52;
+        ctx.beginPath();
+        ctx.moveTo(sunX + Math.cos(a) * r1, sunY + Math.sin(a) * r1);
+        ctx.lineTo(sunX + Math.cos(a) * r2, sunY + Math.sin(a) * r2);
+        ctx.strokeStyle = '#F4B400';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+      }
+
+      // Draw ground line
+      ctx.beginPath();
+      ctx.moveTo(0, groundY);
+      ctx.lineTo(canvas.width, groundY);
+      ctx.strokeStyle = '#5f7f3d';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      // Draw panel stand
+      ctx.beginPath();
+      ctx.moveTo(panelBaseX, panelBaseY);
+      ctx.lineTo(panelBaseX, panelBaseY - 50);
+      ctx.strokeStyle = '#666';
+      ctx.lineWidth = 8;
+      ctx.stroke();
+
+      // Panel geometry
+      const panelAngleRad = -tilt * Math.PI / 180;
+      const panelCenterX = panelBaseX;
+      const panelCenterY = panelBaseY - 70;
+      const dx = Math.cos(panelAngleRad) * panelLength / 2;
+      const dy = Math.sin(panelAngleRad) * panelLength / 2;
+      const p1x = panelCenterX - dx;
+      const p1y = panelCenterY - dy;
+      const p2x = panelCenterX + dx;
+      const p2y = panelCenterY + dy;
+
+      // Panel outline
+      ctx.beginPath();
+      ctx.moveTo(p1x, p1y);
+      ctx.lineTo(p2x, p2y);
+      ctx.strokeStyle = '#1f4b8f';
+      ctx.lineWidth = 18;
+      ctx.stroke();
+
+      // Panel grid lines
+      ctx.strokeStyle = 'rgba(255,255,255,0.45)';
+      ctx.lineWidth = 1.5;
+      for (let i = -2; i <= 2; i++) {
+        const frac = i / 5;
+        const gx = panelCenterX + (-dy * frac * 0.6);
+        const gy = panelCenterY + (dx * frac * 0.6);
+        ctx.beginPath();
+        ctx.moveTo(gx - dx * 0.95, gy - dy * 0.95);
+        ctx.lineTo(gx + dx * 0.95, gy + dy * 0.95);
+        ctx.stroke();
+      }
+
+      // Physics-ish simplified model
+      const rayX = panelCenterX - sunX;
+      const rayY = panelCenterY - sunY;
+      const rayLength = Math.hypot(rayX, rayY);
+      const rayUnitX = rayX / rayLength;
+      const rayUnitY = rayY / rayLength;
+
+      // Panel normal points "up" from surface
+      const normalAngle = panelAngleRad - Math.PI / 2;
+      const normalX = Math.cos(normalAngle);
+      const normalY = Math.sin(normalAngle);
+
+      // Sun height factor: 0 at sunrise/sunset, 1 at noon
+      const sunStrength = Math.max(0, Math.sin(Math.PI * t));
+
+      // Alignment factor based on ray and panel normal
+      const alignment = Math.max(0, -(rayUnitX * normalX + rayUnitY * normalY));
+
+      const power = Math.round(558 * sunStrength * alignment);
+      mwValue.textContent = power;
+
+      // Meter bar
+      const barX = 60;
+      const barY = 60;
+      const barW = 180;
+      const barH = 20;
+      ctx.strokeStyle = '#333';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(barX, barY, barW, barH);
+      ctx.fillStyle = '#41a85f';
+      ctx.fillRect(barX, barY, barW * (power / 1000), barH);
+      ctx.fillStyle = '#222';
+      ctx.font = '18px Arial';
+      ctx.fillText('mW Meter', barX, barY - 10);
+
+      // Labels
+      ctx.fillStyle = '#222';
+      ctx.font = '18px Arial';
+      ctx.fillText(`Sun`, sunX - 16, sunY - 40);
+      ctx.fillText(`Panel`, panelCenterX + 50, panelCenterY + 10);
+    }
+
+    timeSlider.addEventListener('input', draw);
+    tiltSlider.addEventListener('input', draw);
+    draw();
+  </script>
+</body>
+</html>
