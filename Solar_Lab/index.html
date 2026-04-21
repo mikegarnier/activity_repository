@@ -238,7 +238,7 @@
       // Alignment factor based on ray and panel normal
       const alignment = Math.max(0, -(rayUnitX * normalX + rayUnitY * normalY));
 
-      const power = Math.round(558 * sunStrength * alignment);
+      const power = Math.round(1000 * sunStrength * alignment);
       mwValue.textContent = power;
 
       // Meter bar
