@@ -658,8 +658,8 @@
 
     function updateBird(dt) {
       const gameRect = gameArea.getBoundingClientRect();
-      const acceleration = 1350;
-      const drag = 0.82;
+      const acceleration = 1850;
+      const drag = 0.62;
 
       if (keys.ArrowUp) state.birdVelocityY -= acceleration * dt;
       if (keys.ArrowDown) state.birdVelocityY += acceleration * dt;
