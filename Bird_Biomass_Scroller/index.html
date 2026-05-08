@@ -727,11 +727,11 @@
       </div>
 
       <div id="groundLabel">
-        <strong>The Main Idea:</strong> the bird may eat a lot of insect biomass over its lifetime, but the only energy directly available to the next consumer is the 10% it used to make new cells. The rest leaves the food chain as waste or heat.
+        <strong>The Main Idea:</strong> the bird may eat a lot of insect biomass over its lifetime, but only the tissue it builds is directly available as biomass to the next consumer. The rest leaves the food chain path as waste or heat.
       </div>
 
       <div id="controlsHint">
-        Controls:<br />↑ move up<br />↓ move down<br />Eat bugs by touching them<br />Avoid predators<br />Squeeze between hawks and coyotes
+        Controls:<br />↑ move up<br />↓ move down<br />Eat bugs by touching them<br />Avoid predators<br />Dodge hawks and coyotes
       </div>
 
       <div id="gameOver">
@@ -781,15 +781,18 @@
       insectEnergyDensity: 6000000, // J per kg, simplified classroom value
       avgBugMassKg: 0.0025,
       startingBirdScale: 0.60,
-      adultBirdScale: 2.0,
+      adultBirdScale: 1.8,
       growthPerBug: 0.025,
       dialMaxKJ: 6000,
       birdMoveSpeed: 420,
       birdTurnTilt: 10,
       coyoteSpawnIntervalMs: 8500,
+      hawkSpawnIntervalMs: 10500,
       coyoteSpeed: 260,
-      hawkSpeed: 300,
+      hawkSpeed: 285,
       predatorGapPx: 135,
+      coyoteYFromBottom: 325,
+      hawkMaxYAboveCoyote: 120,
       hawkHitboxWidth: 100,
       coyoteHitboxWidth: 100,
       maxFlightEnergyJ: 90000,
@@ -815,6 +818,7 @@
       lastTime: performance.now(),
       lastBugSpawn: 0,
       lastCoyoteSpawn: 0,
+      lastHawkSpawn: 0,
       caughtMessage: 'Simulation Paused',
       paused: false,
       running: true
@@ -930,17 +934,16 @@
       `;
 
       coyote.x = gameRect.width + 180;
-      coyote.y = gameRect.height - 325;
+      coyote.y = gameRect.height - model.coyoteYFromBottom;
       coyote.speed = model.coyoteSpeed + Math.random() * 70;
       coyote.style.left = coyote.x + 'px';
       coyote.style.top = coyote.y + 'px';
       gameArea.appendChild(coyote);
       coyotes.push(coyote);
 
-      createHawk(coyote.y - model.predatorGapPx - 70);
     }
 
-    function createHawk(y) {
+    function createHawk(y = null) {
       const gameRect = gameArea.getBoundingClientRect();
       const hawk = document.createElement('div');
       hawk.className = 'hawk';
@@ -956,7 +959,12 @@
       `;
 
       hawk.x = gameRect.width + 190;
-      hawk.y = Math.max(15, y);
+      const coyoteLaneY = gameRect.height - model.coyoteYFromBottom;
+      const highestHawkY = 35;
+      const lowestHawkY = Math.max(highestHawkY, coyoteLaneY - model.hawkMaxYAboveCoyote);
+      hawk.y = y === null
+        ? highestHawkY + Math.random() * Math.max(1, lowestHawkY - highestHawkY)
+        : Math.max(15, Math.min(y, lowestHawkY));
       hawk.speed = model.hawkSpeed + Math.random() * 60;
       hawk.style.left = hawk.x + 'px';
       hawk.style.top = hawk.y + 'px';
@@ -1147,7 +1155,12 @@
       }
     }
 
-    function updateHawks(dt) {
+    function updateHawks(dt, now) {
+      if (now - state.lastHawkSpawn > model.hawkSpawnIntervalMs) {
+        createHawk();
+        state.lastHawkSpawn = now;
+      }
+
       const birdRect = bird.getBoundingClientRect();
       for (let i = hawks.length - 1; i >= 0; i--) {
         const hawk = hawks[i];
@@ -1195,7 +1208,7 @@
         updateBugs(dt, now);
         updatePoops(dt, now);
         updateCoyotes(dt, now);
-        updateHawks(dt);
+        updateHawks(dt, now);
       }
 
       requestAnimationFrame(loop);
@@ -1215,6 +1228,7 @@
       state.birdScale = model.startingBirdScale;
       state.lastBugSpawn = 0;
       state.lastCoyoteSpawn = 0;
+      state.lastHawkSpawn = 0;
       state.paused = false;
       state.lastTime = performance.now();
       bird.style.top = state.birdY + 'px';
