@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bird Biomass Scroller Simulation</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #eef7ff;
+      color: #1f2937;
+      overflow: hidden;
+    }
+
+    #app {
+      width: 100vw;
+      height: 100vh;
+      display: grid;
+      grid-template-rows: 28vh 1fr;
+    }
+
+    header {
+      background: white;
+      border-bottom: 2px solid #cbd5e1;
+      padding: 16px 18px;
+      display: grid;
+      grid-template-columns: 1fr 3.6fr auto;
+      gap: 18px;
+      align-items: stretch;
+      z-index: 5;
+      min-height: 25vh;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 30px;
+      line-height: 1.15;
+    }
+
+    .subtitle {
+      font-size: 17px;
+      color: #475569;
+      margin-top: 8px;
+      line-height: 1.35;
+    }
+
+    #scoreboard {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(165px, 1fr));
+      gap: 14px;
+      height: 100%;
+    }
+
+    .dialCard {
+      background: #f8fafc;
+      border: 2px solid #cbd5e1;
+      border-radius: 18px;
+      padding: 14px;
+      min-height: 145px;
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      gap: 14px;
+      align-items: center;
+    }
+
+    .dial {
+      width: 116px;
+      height: 116px;
+      border-radius: 50%;
+      background: conic-gradient(#22c55e 0deg, #e2e8f0 0deg 360deg);
+      display: grid;
+      place-items: center;
+      position: relative;
+      border: 1px solid #cbd5e1;
+    }
+
+    .dial::after {
+      content: "";
+      position: absolute;
+      width: 78px;
+      height: 78px;
+      border-radius: 50%;
+      background: white;
+      border: 1px solid #e2e8f0;
+    }
+
+    .dialReadout {
+      position: relative;
+      z-index: 1;
+      font-size: 22px;
+      font-weight: bold;
+      color: #0f172a;
+    }
+
+    .dialInfo h2 {
+      margin: 0 0 8px;
+      font-size: 17px;
+      color: #334155;
+      line-height: 1.15;
+    }
+
+    .dialValue {
+      font-size: 26px;
+      font-weight: bold;
+      color: #0f172a;
+      white-space: nowrap;
+    }
+
+    .dialNote {
+      margin-top: 6px;
+      font-size: 14px;
+      color: #64748b;
+      line-height: 1.2;
+    }
+
+    button {
+      border: 0;
+      border-radius: 12px;
+      background: #2563eb;
+      color: white;
+      padding: 14px 18px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 14px;
+    }
+
+    button:hover {
+      background: #1d4ed8;
+    }
+
+    #gameArea {
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(#a7ddff 0%, #dff3ff 55%, #edf9e8 56%, #b7e3a2 100%);
+    }
+
+    .cloud {
+      position: absolute;
+      width: 160px;
+      height: 50px;
+      background: rgba(255,255,255,0.82);
+      border-radius: 999px;
+      filter: blur(0.2px);
+      animation: drift linear infinite;
+    }
+
+    .cloud::before,
+    .cloud::after {
+      content: "";
+      position: absolute;
+      background: rgba(255,255,255,0.86);
+      border-radius: 50%;
+    }
+
+    .cloud::before {
+      width: 68px;
+      height: 68px;
+      top: -28px;
+      left: 25px;
+    }
+
+    .cloud::after {
+      width: 82px;
+      height: 82px;
+      top: -38px;
+      right: 28px;
+    }
+
+    @keyframes drift {
+      from { transform: translateX(110vw); }
+      to { transform: translateX(-240px); }
+    }
+
+    #bird {
+      position: absolute;
+      left: 130px;
+      top: 240px;
+      width: 90px;
+      height: 58px;
+      transform-origin: center;
+      z-index: 3;
+    }
+
+    .birdBody {
+      position: absolute;
+      width: 66px;
+      height: 42px;
+      left: 12px;
+      top: 12px;
+      background: #f59e0b;
+      border: 3px solid #92400e;
+      border-radius: 60% 55% 50% 50%;
+    }
+
+    .birdWing {
+      position: absolute;
+      width: 42px;
+      height: 26px;
+      left: 30px;
+      top: 24px;
+      background: #d97706;
+      border: 3px solid #92400e;
+      border-radius: 70% 15% 70% 25%;
+      transform-origin: 10px 8px;
+      animation: flap 0.35s ease-in-out infinite alternate;
+    }
+
+    @keyframes flap {
+      from { transform: rotate(-22deg); }
+      to { transform: rotate(20deg); }
+    }
+
+    .birdHead {
+      position: absolute;
+      width: 34px;
+      height: 34px;
+      right: 0;
+      top: 4px;
+      background: #fbbf24;
+      border: 3px solid #92400e;
+      border-radius: 50%;
+    }
+
+    .birdEye {
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      left: 12px;
+      top: 12px;
+      background: #111827;
+      border-radius: 50%;
+    }
+
+    .beak {
+      position: absolute;
+      right: -16px;
+      top: 16px;
+      width: 0;
+      height: 0;
+      border-top: 7px solid transparent;
+      border-bottom: 7px solid transparent;
+      border-left: 18px solid #ef4444;
+    }
+
+    .tail {
+      position: absolute;
+      left: -4px;
+      top: 26px;
+      width: 0;
+      height: 0;
+      border-top: 12px solid transparent;
+      border-bottom: 12px solid transparent;
+      border-right: 24px solid #92400e;
+    }
+
+    .bug {
+      position: absolute;
+      width: 34px;
+      height: 24px;
+      z-index: 2;
+    }
+
+    .bugBody {
+      position: absolute;
+      width: 22px;
+      height: 16px;
+      left: 6px;
+      top: 4px;
+      background: #111827;
+      border-radius: 50%;
+    }
+
+    .bugWing {
+      position: absolute;
+      width: 16px;
+      height: 12px;
+      background: rgba(255,255,255,0.75);
+      border: 1px solid #94a3b8;
+      border-radius: 50%;
+      animation: wingBuzz 0.16s linear infinite alternate;
+    }
+
+    .bugWing.left {
+      left: 2px;
+      top: -1px;
+      transform-origin: right bottom;
+    }
+
+    .bugWing.right {
+      right: 2px;
+      top: -1px;
+      transform-origin: left bottom;
+    }
+
+    @keyframes wingBuzz {
+      from { transform: rotate(-16deg); }
+      to { transform: rotate(16deg); }
+    }
+
+    .poop {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      background: #7c4a20;
+      border: 2px solid #4b2e13;
+      border-radius: 60% 45% 60% 45%;
+      z-index: 1;
+    }
+
+    .heatPuff {
+      position: absolute;
+      color: #b91c1c;
+      font-size: 22px;
+      font-weight: bold;
+      opacity: 0.9;
+      pointer-events: none;
+      animation: riseFade 1.2s ease-out forwards;
+      z-index: 4;
+    }
+
+    .eatText {
+      position: absolute;
+      color: #166534;
+      font-size: 18px;
+      font-weight: bold;
+      pointer-events: none;
+      animation: riseFade 0.9s ease-out forwards;
+      z-index: 4;
+    }
+
+    @keyframes riseFade {
+      from { transform: translateY(0); opacity: 1; }
+      to { transform: translateY(-42px); opacity: 0; }
+    }
+
+    #groundLabel {
+      position: absolute;
+      left: 14px;
+      right: 190px;
+      bottom: 10px;
+      background: rgba(255,255,255,0.9);
+      border: 2px solid #94a3b8;
+      border-radius: 14px;
+      padding: 14px 18px;
+      font-size: 20px;
+      line-height: 1.35;
+      min-height: 92px;
+      box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
+    }
+
+    #controlsHint {
+      position: absolute;
+      right: 16px;
+      bottom: 14px;
+      width: 155px;
+      background: rgba(255,255,255,0.86);
+      border: 1px solid #94a3b8;
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-size: 14px;
+      line-height: 1.4;
+      text-align: right;
+    }
+
+
+    #gameOver {
+      position: absolute;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(15, 23, 42, 0.35);
+      z-index: 10;
+    }
+
+    #gameOverPanel {
+      width: min(620px, 90vw);
+      background: white;
+      border-radius: 18px;
+      padding: 24px;
+      text-align: center;
+      box-shadow: 0 18px 40px rgba(0,0,0,0.25);
+    }
+
+    #gameOverPanel h2 {
+      margin-top: 0;
+    }
+
+    @media (max-width: 950px) {
+      header {
+        grid-template-columns: 1fr;
+      }
+
+      #scoreboard {
+        grid-template-columns: repeat(2, minmax(145px, 1fr));
+      }
+
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <header>
+      <div>
+        <h1>Bird Biomass Scroller</h1>
+        <div class="subtitle">Fly, eat insects, poop, release heat, and store a smaller amount as body tissue.</div>
+      </div>
+
+      <div id="scoreboard">
+        <div class="dialCard">
+          <div class="dial" id="tissueDial"><span class="dialReadout" id="tissueReadout">0 kJ</span></div>
+          <div class="dialInfo">
+            <h2>Energy stored in bird biomass</h2>
+            <div class="dialValue" id="tissueEnergy">0 J</div>
+            <div class="dialNote">same scale as all dials</div>
+          </div>
+        </div>
+        <div class="dialCard">
+          <div class="dial" id="eatenDial"><span class="dialReadout" id="eatenReadout">0 kJ</span></div>
+          <div class="dialInfo">
+            <h2>Total energy consumed by bird</h2>
+            <div class="dialValue" id="eatenEnergy">0 J</div>
+            <div class="dialNote">dial max: 6,000 kJ</div>
+          </div>
+        </div>
+        <div class="dialCard">
+          <div class="dial" id="poopDial"><span class="dialReadout" id="poopReadout">0 kJ</span></div>
+          <div class="dialInfo">
+            <h2>Total energy excreted by bird</h2>
+            <div class="dialValue" id="poopEnergy">0 J</div>
+            <div class="dialNote">same scale as all dials</div>
+          </div>
+        </div>
+        <div class="dialCard">
+          <div class="dial" id="heatDial"><span class="dialReadout" id="heatReadout">0 kJ</span></div>
+          <div class="dialInfo">
+            <h2>Total energy lost through heat</h2>
+            <div class="dialValue" id="heatEnergy">0 J</div>
+            <div class="dialNote">same scale as all dials</div>
+          </div>
+        </div>
+      </div>
+
+      <button id="resetBtn">Reset</button>
+    </header>
+
+    <main id="gameArea">
+      <div class="cloud" style="top: 70px; animation-duration: 32s; animation-delay: -12s;"></div>
+      <div class="cloud" style="top: 150px; animation-duration: 45s; animation-delay: -24s; transform: scale(0.8);"></div>
+      <div class="cloud" style="top: 30px; animation-duration: 52s; animation-delay: -6s; transform: scale(1.2);"></div>
+
+      <div id="bird" aria-label="bird">
+        <div class="tail"></div>
+        <div class="birdBody"></div>
+        <div class="birdWing"></div>
+        <div class="birdHead">
+          <div class="birdEye"></div>
+          <div class="beak"></div>
+        </div>
+      </div>
+
+      <div id="groundLabel">
+        <strong>The Main Idea:</strong> the bird may eat a lot of insect biomass over its lifetime, but only the tissue it builds is directly available as biomass to the next consumer. The rest leaves the food chain path as waste or heat.
+      </div>
+
+      <div id="controlsHint">
+        Controls:<br />↑ move up<br />↓ move down<br />Eat bugs by touching them
+      </div>
+
+      <div id="gameOver">
+        <div id="gameOverPanel">
+          <h2>Simulation Paused</h2>
+          <p>This model is meant to show that energy transfer through a food chain is inefficient. Predators do not get all of the biomass or energy their prey consumed during life.</p>
+          <button id="resumeBtn">Resume</button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const gameArea = document.getElementById('gameArea');
+    const bird = document.getElementById('bird');
+    const resetBtn = document.getElementById('resetBtn');
+    const resumeBtn = document.getElementById('resumeBtn');
+    const gameOver = document.getElementById('gameOver');
+
+    const eatenEnergyEl = document.getElementById('eatenEnergy');
+    const tissueEnergyEl = document.getElementById('tissueEnergy');
+    const poopEnergyEl = document.getElementById('poopEnergy');
+    const heatEnergyEl = document.getElementById('heatEnergy');
+    const eatenDial = document.getElementById('eatenDial');
+    const tissueDial = document.getElementById('tissueDial');
+    const poopDial = document.getElementById('poopDial');
+    const heatDial = document.getElementById('heatDial');
+    const eatenReadoutEl = document.getElementById('eatenReadout');
+    const tissueReadoutEl = document.getElementById('tissueReadout');
+    const poopReadoutEl = document.getElementById('poopReadout');
+    const heatReadoutEl = document.getElementById('heatReadout');
+
+    const keys = { ArrowUp: false, ArrowDown: false };
+    const bugs = [];
+    const poops = [];
+
+    const model = {
+      tissueFraction: 0.10,
+      excrementFraction: 0.30,
+      heatFraction: 0.60,
+      insectEnergyDensity: 6000000, // J per kg, simplified classroom value
+      avgBugMassKg: 0.0025,
+      startingBirdScale: 0.60,
+      adultBirdScale: 1.45,
+      growthPerBug: 0.018,
+      dialMaxKJ: 6000
+    };
+
+    const state = {
+      birdY: 240,
+      birdVelocityY: 0,
+      eatenMassKg: 0,
+      eatenEnergyJ: 0,
+      tissueMassKg: 0,
+      tissueEnergyJ: 0,
+      poopMassKg: 0,
+      poopEnergyJ: 0,
+      heatEnergyJ: 0,
+      birdScale: model.startingBirdScale,
+      lastTime: performance.now(),
+      lastBugSpawn: 0,
+      paused: false,
+      running: true
+    };
+
+    function formatKg(value) {
+      return value.toFixed(3) + ' kg';
+    }
+
+    function formatJ(value) {
+      if (value >= 1000000) return (value / 1000000).toFixed(2) + ' MJ';
+      if (value >= 1000) return Math.round(value / 1000) + ' kJ';
+      return Math.round(value) + ' J';
+    }
+
+    function setDial(dialEl, readoutEl, valueJ, color) {
+      const valueKJ = valueJ / 1000;
+      const percent = model.dialMaxKJ > 0 ? Math.min(100, (valueKJ / model.dialMaxKJ) * 100) : 0;
+      const degrees = percent * 3.6;
+      dialEl.style.background = `conic-gradient(${color} ${degrees}deg, #e2e8f0 ${degrees}deg 360deg)`;
+      readoutEl.textContent = Math.round(valueKJ).toLocaleString() + ' kJ';
+    }
+
+    function updateScoreboard() {
+      eatenEnergyEl.textContent = formatJ(state.eatenEnergyJ);
+      tissueEnergyEl.textContent = formatJ(state.tissueEnergyJ);
+      poopEnergyEl.textContent = formatJ(state.poopEnergyJ);
+      heatEnergyEl.textContent = formatJ(state.heatEnergyJ);
+
+      setDial(eatenDial, eatenReadoutEl, state.eatenEnergyJ, '#2563eb');
+      setDial(tissueDial, tissueReadoutEl, state.tissueEnergyJ, '#22c55e');
+      setDial(poopDial, poopReadoutEl, state.poopEnergyJ, '#7c4a20');
+      setDial(heatDial, heatReadoutEl, state.heatEnergyJ, '#ef4444');
+
+    }
+
+    function rectsOverlap(a, b) {
+      return !(
+        a.right < b.left ||
+        a.left > b.right ||
+        a.bottom < b.top ||
+        a.top > b.bottom
+      );
+    }
+
+    function createBug() {
+      const gameRect = gameArea.getBoundingClientRect();
+      const bug = document.createElement('div');
+      bug.className = 'bug';
+      bug.innerHTML = `
+        <div class="bugWing left"></div>
+        <div class="bugWing right"></div>
+        <div class="bugBody"></div>
+      `;
+
+      const mass = model.avgBugMassKg * (0.65 + Math.random() * 0.9);
+      bug.dataset.massKg = mass;
+      bug.dataset.energyJ = mass * model.insectEnergyDensity;
+      bug.x = gameRect.width + 40;
+      bug.y = 50 + Math.random() * Math.max(80, gameRect.height - 170);
+      bug.speed = 170 + Math.random() * 90;
+
+      bug.style.left = bug.x + 'px';
+      bug.style.top = bug.y + 'px';
+      gameArea.appendChild(bug);
+      bugs.push(bug);
+    }
+
+    function createPoop(mass, energy) {
+      const poop = document.createElement('div');
+      poop.className = 'poop';
+
+      poop.dataset.massKg = mass;
+      poop.dataset.energyJ = energy;
+      poop.x = 135;
+      poop.y = state.birdY + 48;
+      poop.vy = 60 + Math.random() * 45;
+      poop.vx = -40 - Math.random() * 40;
+
+      poop.style.left = poop.x + 'px';
+      poop.style.top = poop.y + 'px';
+      gameArea.appendChild(poop);
+      poops.push(poop);
+    }
+
+    function showFloatingText(text, x, y, className) {
+      const el = document.createElement('div');
+      el.className = className;
+      el.textContent = text;
+      el.style.left = x + 'px';
+      el.style.top = y + 'px';
+      gameArea.appendChild(el);
+      setTimeout(() => el.remove(), 1300);
+    }
+
+    function eatBug(bug) {
+      const mass = Number(bug.dataset.massKg);
+      const energy = Number(bug.dataset.energyJ);
+
+      state.eatenMassKg += mass;
+      state.eatenEnergyJ += energy;
+
+      state.tissueMassKg += mass * model.tissueFraction;
+      state.tissueEnergyJ += energy * model.tissueFraction;
+
+      state.poopMassKg += mass * model.excrementFraction;
+      state.poopEnergyJ += energy * model.excrementFraction;
+
+      state.heatEnergyJ += energy * model.heatFraction;
+      state.birdScale = Math.min(model.adultBirdScale, state.birdScale + model.growthPerBug);
+
+      showFloatingText('+ insect', bug.x, bug.y - 12, 'eatText');
+      showFloatingText('heat', 145, state.birdY + 4, 'heatPuff');
+
+      const poopMass = mass * model.excrementFraction;
+      const poopEnergy = energy * model.excrementFraction;
+      setTimeout(() => {
+        if (!state.running) return;
+        createPoop(poopMass, poopEnergy);
+      }, 1000);
+
+      bug.remove();
+      bugs.splice(bugs.indexOf(bug), 1);
+      updateScoreboard();
+    }
+
+    function updateBird(dt) {
+      const gameRect = gameArea.getBoundingClientRect();
+      const acceleration = 1350;
+      const drag = 0.82;
+
+      if (keys.ArrowUp) state.birdVelocityY -= acceleration * dt;
+      if (keys.ArrowDown) state.birdVelocityY += acceleration * dt;
+
+      state.birdVelocityY *= Math.pow(drag, dt * 60);
+      state.birdY += state.birdVelocityY * dt;
+
+      const minY = 10;
+      const maxY = gameRect.height - 80;
+      if (state.birdY < minY) {
+        state.birdY = minY;
+        state.birdVelocityY = 0;
+      }
+      if (state.birdY > maxY) {
+        state.birdY = maxY;
+        state.birdVelocityY = 0;
+      }
+
+      bird.style.top = state.birdY + 'px';
+      bird.style.transform = `scale(${state.birdScale}) rotate(${Math.max(-14, Math.min(14, state.birdVelocityY / 45))}deg)`;
+    }
+
+    function updateBugs(dt, now) {
+      if (now - state.lastBugSpawn > 750) {
+        createBug();
+        state.lastBugSpawn = now;
+      }
+
+      const birdRect = bird.getBoundingClientRect();
+
+      for (let i = bugs.length - 1; i >= 0; i--) {
+        const bug = bugs[i];
+        bug.x -= bug.speed * dt;
+        bug.style.left = bug.x + 'px';
+
+        const bugRect = bug.getBoundingClientRect();
+        if (rectsOverlap(birdRect, bugRect)) {
+          eatBug(bug);
+        } else if (bug.x < -60) {
+          bug.remove();
+          bugs.splice(i, 1);
+        }
+      }
+    }
+
+    function updatePoops(dt, now) {
+      const gameRect = gameArea.getBoundingClientRect();
+      for (let i = poops.length - 1; i >= 0; i--) {
+        const poop = poops[i];
+        poop.vy += 360 * dt;
+        poop.x += poop.vx * dt;
+        poop.y += poop.vy * dt;
+        poop.style.left = poop.x + 'px';
+        poop.style.top = poop.y + 'px';
+
+        if (poop.y > gameRect.height + 30 || poop.x < -40) {
+          poop.remove();
+          poops.splice(i, 1);
+        }
+      }
+    }
+
+    function loop(now) {
+      if (!state.running) return;
+      const dt = Math.min(0.033, (now - state.lastTime) / 1000);
+      state.lastTime = now;
+
+      if (!state.paused) {
+        updateBird(dt);
+        updateBugs(dt, now);
+        updatePoops(dt, now);
+      }
+
+      requestAnimationFrame(loop);
+    }
+
+    function resetGame() {
+      state.birdY = 240;
+      state.birdVelocityY = 0;
+      state.eatenMassKg = 0;
+      state.eatenEnergyJ = 0;
+      state.tissueMassKg = 0;
+      state.tissueEnergyJ = 0;
+      state.poopMassKg = 0;
+      state.poopEnergyJ = 0;
+      state.heatEnergyJ = 0;
+      state.birdScale = model.startingBirdScale;
+      state.lastBugSpawn = 0;
+      state.paused = false;
+      state.lastTime = performance.now();
+      bird.style.top = state.birdY + 'px';
+      bird.style.transform = `scale(${state.birdScale}) rotate(0deg)`;
+      gameOver.style.display = 'none';
+
+      bugs.splice(0).forEach(b => b.remove());
+      poops.splice(0).forEach(p => p.remove());
+      document.querySelectorAll('.eatText, .heatPuff').forEach(el => el.remove());
+      updateScoreboard();
+    }
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+        keys[event.key] = true;
+        event.preventDefault();
+      }
+
+      if (event.key === ' ') {
+        state.paused = !state.paused;
+        gameOver.style.display = state.paused ? 'flex' : 'none';
+        event.preventDefault();
+      }
+    });
+
+    document.addEventListener('keyup', (event) => {
+      if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+        keys[event.key] = false;
+        event.preventDefault();
+      }
+    });
+
+    resetBtn.addEventListener('click', resetGame);
+    resumeBtn.addEventListener('click', () => {
+      state.paused = false;
+      gameOver.style.display = 'none';
+      state.lastTime = performance.now();
+    });
+
+    bird.style.transform = `scale(${state.birdScale}) rotate(0deg)`;
+    updateScoreboard();
+    requestAnimationFrame(loop);
+  </script>
+</body>
+</html>
