@@ -49,6 +49,13 @@
       line-height: 1.35;
     }
 
+    #scorePanel {
+      display: grid;
+      grid-template-rows: 1fr auto;
+      gap: 10px;
+      height: 100%;
+    }
+
     #scoreboard {
       display: grid;
       grid-template-columns: repeat(4, minmax(165px, 1fr));
@@ -116,6 +123,45 @@
       font-size: 14px;
       color: #64748b;
       line-height: 1.2;
+    }
+
+    #flightEnergyBox {
+      background: #f8fafc;
+      border: 2px solid #cbd5e1;
+      border-radius: 16px;
+      padding: 10px 14px;
+      display: grid;
+      grid-template-columns: 230px 1fr 90px;
+      gap: 12px;
+      align-items: center;
+    }
+
+    #flightEnergyLabel {
+      font-weight: bold;
+      font-size: 17px;
+      color: #334155;
+    }
+
+    #flightEnergyBarOuter {
+      height: 24px;
+      background: #e2e8f0;
+      border: 1px solid #94a3b8;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    #flightEnergyBarInner {
+      height: 100%;
+      width: 100%;
+      background: linear-gradient(90deg, #f97316, #22c55e);
+      transition: width 0.15s linear;
+    }
+
+    #flightEnergyReadout {
+      font-weight: bold;
+      font-size: 17px;
+      text-align: right;
+      color: #0f172a;
     }
 
     button {
@@ -312,15 +358,215 @@
       z-index: 1;
     }
 
-    .heatPuff {
+    .coyote {
       position: absolute;
-      color: #b91c1c;
-      font-size: 22px;
-      font-weight: bold;
-      opacity: 0.9;
+      width: 130px;
+      height: 74px;
+      z-index: 2;
+    }
+
+    .coyoteBody {
+      position: absolute;
+      width: 92px;
+      height: 38px;
+      left: 32px;
+      top: 24px;
+      background: #9a6b3f;
+      border: 3px solid #5c3b1e;
+      border-radius: 48% 42% 38% 42%;
+    }
+
+    .coyoteHead {
+      position: absolute;
+      width: 42px;
+      height: 34px;
+      left: 4px;
+      top: 16px;
+      background: #a8794b;
+      border: 3px solid #5c3b1e;
+      border-radius: 45% 55% 45% 45%;
+    }
+
+    .coyoteSnout {
+      position: absolute;
+      width: 24px;
+      height: 14px;
+      left: -15px;
+      top: 11px;
+      background: #c49a6c;
+      border: 3px solid #5c3b1e;
+      border-radius: 50% 20% 20% 50%;
+    }
+
+    .coyoteEar {
+      position: absolute;
+      width: 0;
+      height: 0;
+      border-left: 9px solid transparent;
+      border-right: 9px solid transparent;
+      border-bottom: 22px solid #5c3b1e;
+      top: -17px;
+    }
+
+    .coyoteEar.left { left: 7px; }
+    .coyoteEar.right { left: 22px; }
+
+    .coyoteEye {
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      left: 14px;
+      top: 12px;
+      background: #111827;
+      border-radius: 50%;
+    }
+
+    .coyoteTail {
+      position: absolute;
+      width: 42px;
+      height: 16px;
+      right: 0;
+      top: 23px;
+      background: #6b4a2c;
+      border: 3px solid #5c3b1e;
+      border-radius: 40% 60% 60% 40%;
+      transform: rotate(-24deg);
+      transform-origin: left center;
+    }
+
+    .coyoteLeg {
+      position: absolute;
+      width: 13px;
+      height: 28px;
+      background: #6b4a2c;
+      border: 2px solid #5c3b1e;
+      border-radius: 6px;
+      top: 54px;
+      animation: coyoteRun 0.32s ease-in-out infinite alternate;
+    }
+
+    .coyoteLeg.one { left: 44px; }
+    .coyoteLeg.two { left: 70px; animation-delay: -0.16s; }
+    .coyoteLeg.three { left: 98px; }
+
+    .hawk {
+      position: absolute;
+      width: 150px;
+      height: 70px;
+      z-index: 2;
+    }
+
+    .hawkBody {
+      position: absolute;
+      width: 64px;
+      height: 30px;
+      left: 48px;
+      top: 24px;
+      background: #4b5563;
+      border: 3px solid #1f2937;
+      border-radius: 55% 45% 45% 55%;
+    }
+
+    .hawkHead {
+      position: absolute;
+      width: 30px;
+      height: 28px;
+      left: 26px;
+      top: 20px;
+      background: #6b7280;
+      border: 3px solid #1f2937;
+      border-radius: 50%;
+    }
+
+    .hawkEye {
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      left: 8px;
+      top: 8px;
+      background: #facc15;
+      border-radius: 50%;
+    }
+
+    .hawkBeak {
+      position: absolute;
+      left: -15px;
+      top: 11px;
+      width: 0;
+      height: 0;
+      border-top: 7px solid transparent;
+      border-bottom: 7px solid transparent;
+      border-right: 18px solid #f59e0b;
+    }
+
+    .hawkWing {
+      position: absolute;
+      width: 84px;
+      height: 25px;
+      background: #374151;
+      border: 3px solid #1f2937;
+      border-radius: 70% 20% 70% 20%;
+      transform-origin: 45px 15px;
+      animation: hawkFlap 0.55s ease-in-out infinite alternate;
+    }
+
+    .hawkWing.top {
+      left: 48px;
+      top: 6px;
+    }
+
+    .hawkWing.bottom {
+      left: 52px;
+      top: 40px;
+      animation-delay: -0.25s;
+    }
+
+    .hawkTail {
+      position: absolute;
+      right: 5px;
+      top: 28px;
+      width: 0;
+      height: 0;
+      border-top: 12px solid transparent;
+      border-bottom: 12px solid transparent;
+      border-left: 30px solid #1f2937;
+    }
+
+    @keyframes hawkFlap {
+      from { transform: rotate(-22deg); }
+      to { transform: rotate(20deg); }
+    }
+
+    @keyframes coyoteRun {
+      from { transform: rotate(-14deg); }
+      to { transform: rotate(14deg); }
+    }
+
+    .heatAura {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 120px;
+      height: 90px;
+      transform: translate(-50%, -50%);
+      background: rgba(255, 105, 180, 0.42);
+      border: 2px solid rgba(255, 105, 180, 0.62);
+      border-radius: 50%;
+      filter: blur(10px);
       pointer-events: none;
-      animation: riseFade 1.2s ease-out forwards;
-      z-index: 4;
+      z-index: -1;
+      animation: heatPulse 1.4s ease-in-out infinite alternate;
+    }
+
+    @keyframes heatPulse {
+      from {
+        transform: translate(-50%, -50%) scale(0.96);
+        opacity: 0.55;
+      }
+      to {
+        transform: translate(-50%, -50%) scale(1.08);
+        opacity: 0.85;
+      }
     }
 
     .eatText {
@@ -400,6 +646,14 @@
         grid-template-columns: repeat(2, minmax(145px, 1fr));
       }
 
+      #flightEnergyBox {
+        grid-template-columns: 1fr;
+      }
+
+      #flightEnergyReadout {
+        text-align: left;
+      }
+
     }
   </style>
 </head>
@@ -411,8 +665,9 @@
         <div class="subtitle">Fly, eat insects, poop, release heat, and store a smaller amount as body tissue.</div>
       </div>
 
-      <div id="scoreboard">
-        <div class="dialCard">
+      <div id="scorePanel">
+        <div id="scoreboard">
+          <div class="dialCard">
           <div class="dial" id="tissueDial"><span class="dialReadout" id="tissueReadout">0 kJ</span></div>
           <div class="dialInfo">
             <h2>Energy stored in bird biomass</h2>
@@ -444,6 +699,12 @@
             <div class="dialNote">same scale as all dials</div>
           </div>
         </div>
+        </div>
+        <div id="flightEnergyBox">
+          <div id="flightEnergyLabel">Energy available for flying</div>
+          <div id="flightEnergyBarOuter"><div id="flightEnergyBarInner"></div></div>
+          <div id="flightEnergyReadout">100%</div>
+        </div>
       </div>
 
       <button id="resetBtn">Reset</button>
@@ -455,6 +716,7 @@
       <div class="cloud" style="top: 30px; animation-duration: 52s; animation-delay: -6s; transform: scale(1.2);"></div>
 
       <div id="bird" aria-label="bird">
+        <div class="heatAura"></div>
         <div class="tail"></div>
         <div class="birdBody"></div>
         <div class="birdWing"></div>
@@ -465,17 +727,17 @@
       </div>
 
       <div id="groundLabel">
-        <strong>The Main Idea:</strong> the bird may eat a lot of insect biomass over its lifetime, but only the tissue it builds is directly available as biomass to the next consumer. The rest leaves the food chain path as waste or heat.
+        <strong>The Main Idea:</strong> the bird may eat a lot of insect biomass over its lifetime, but the only energy directly available to the next consumer is the 10% it used to make new cells. The rest leaves the food chain as waste or heat.
       </div>
 
       <div id="controlsHint">
-        Controls:<br />↑ move up<br />↓ move down<br />Eat bugs by touching them
+        Controls:<br />↑ move up<br />↓ move down<br />Eat bugs by touching them<br />Avoid predators<br />Squeeze between hawks and coyotes
       </div>
 
       <div id="gameOver">
         <div id="gameOverPanel">
           <h2>Simulation Paused</h2>
-          <p>This model is meant to show that energy transfer through a food chain is inefficient. Predators do not get all of the biomass or energy their prey consumed during life.</p>
+          <p id="gameOverText">This model is meant to show that energy transfer through a food chain is inefficient. Predators do not get all of the biomass or energy their prey consumed during life.</p>
           <button id="resumeBtn">Resume</button>
         </div>
       </div>
@@ -488,6 +750,8 @@
     const resetBtn = document.getElementById('resetBtn');
     const resumeBtn = document.getElementById('resumeBtn');
     const gameOver = document.getElementById('gameOver');
+    const gameOverTitle = document.querySelector('#gameOverPanel h2');
+    const gameOverText = document.getElementById('gameOverText');
 
     const eatenEnergyEl = document.getElementById('eatenEnergy');
     const tissueEnergyEl = document.getElementById('tissueEnergy');
@@ -501,10 +765,14 @@
     const tissueReadoutEl = document.getElementById('tissueReadout');
     const poopReadoutEl = document.getElementById('poopReadout');
     const heatReadoutEl = document.getElementById('heatReadout');
+    const flightEnergyBarInner = document.getElementById('flightEnergyBarInner');
+    const flightEnergyReadout = document.getElementById('flightEnergyReadout');
 
     const keys = { ArrowUp: false, ArrowDown: false };
     const bugs = [];
     const poops = [];
+    const coyotes = [];
+    const hawks = [];
 
     const model = {
       tissueFraction: 0.10,
@@ -513,11 +781,23 @@
       insectEnergyDensity: 6000000, // J per kg, simplified classroom value
       avgBugMassKg: 0.0025,
       startingBirdScale: 0.60,
-      adultBirdScale: 1.45,
-      growthPerBug: 0.018,
+      adultBirdScale: 1.8,
+      growthPerBug: 0.025,
       dialMaxKJ: 6000,
       birdMoveSpeed: 420,
-      birdTurnTilt: 10
+      birdTurnTilt: 10,
+      coyoteSpawnIntervalMs: 8500,
+      coyoteSpeed: 260,
+      hawkSpeed: 285,
+      predatorGapPx: 135,
+      hawkHitboxWidth: 100,
+      coyoteHitboxWidth: 100,
+      maxFlightEnergyJ: 90000,
+      flightEnergyDrainJPerSecond: 1300,
+      flightEnergyGainFraction: 0.16,
+      lowEnergySinkSpeed: 95,
+      exhaustedFallSpeed: 520,
+      minimumMoveSpeedFraction: 0.35
     };
 
     const state = {
@@ -530,9 +810,12 @@
       poopMassKg: 0,
       poopEnergyJ: 0,
       heatEnergyJ: 0,
+      flightEnergyJ: model.maxFlightEnergyJ,
       birdScale: model.startingBirdScale,
       lastTime: performance.now(),
       lastBugSpawn: 0,
+      lastCoyoteSpawn: 0,
+      caughtMessage: 'Simulation Paused',
       paused: false,
       running: true
     };
@@ -555,6 +838,12 @@
       readoutEl.textContent = Math.round(valueKJ).toLocaleString() + ' kJ';
     }
 
+    function updateFlightEnergyBar() {
+      const percent = Math.max(0, Math.min(100, (state.flightEnergyJ / model.maxFlightEnergyJ) * 100));
+      flightEnergyBarInner.style.width = percent + '%';
+      flightEnergyReadout.textContent = Math.round(percent) + '%';
+    }
+
     function updateScoreboard() {
       eatenEnergyEl.textContent = formatJ(state.eatenEnergyJ);
       tissueEnergyEl.textContent = formatJ(state.tissueEnergyJ);
@@ -565,6 +854,7 @@
       setDial(tissueDial, tissueReadoutEl, state.tissueEnergyJ, '#22c55e');
       setDial(poopDial, poopReadoutEl, state.poopEnergyJ, '#7c4a20');
       setDial(heatDial, heatReadoutEl, state.heatEnergyJ, '#ef4444');
+      updateFlightEnergyBar();
 
     }
 
@@ -575,6 +865,27 @@
         a.bottom < b.top ||
         a.top > b.bottom
       );
+    }
+
+    function makeCenteredHitbox(rect, targetWidth, targetHeight = rect.height) {
+      const shrinkX = Math.max(0, rect.width - targetWidth) / 2;
+      const shrinkY = Math.max(0, rect.height - targetHeight) / 2;
+      return {
+        left: rect.left + shrinkX,
+        right: rect.right - shrinkX,
+        top: rect.top + shrinkY,
+        bottom: rect.bottom - shrinkY
+      };
+    }
+
+    function makeFrontHitbox(rect, targetWidth, targetHeight = rect.height) {
+      const shrinkY = Math.max(0, rect.height - targetHeight) / 2;
+      return {
+        left: rect.left,
+        right: rect.left + Math.min(targetWidth, rect.width),
+        top: rect.top + shrinkY,
+        bottom: rect.bottom - shrinkY
+      };
     }
 
     function createBug() {
@@ -598,6 +909,92 @@
       bug.style.top = bug.y + 'px';
       gameArea.appendChild(bug);
       bugs.push(bug);
+    }
+
+    function createCoyote() {
+      const gameRect = gameArea.getBoundingClientRect();
+      const coyote = document.createElement('div');
+      coyote.className = 'coyote';
+      coyote.innerHTML = `
+        <div class="coyoteTail"></div>
+        <div class="coyoteBody"></div>
+        <div class="coyoteHead">
+          <div class="coyoteEar left"></div>
+          <div class="coyoteEar right"></div>
+          <div class="coyoteEye"></div>
+          <div class="coyoteSnout"></div>
+        </div>
+        <div class="coyoteLeg one"></div>
+        <div class="coyoteLeg two"></div>
+        <div class="coyoteLeg three"></div>
+      `;
+
+      coyote.x = gameRect.width + 180;
+      coyote.y = gameRect.height - 325;
+      coyote.speed = model.coyoteSpeed + Math.random() * 70;
+      coyote.style.left = coyote.x + 'px';
+      coyote.style.top = coyote.y + 'px';
+      gameArea.appendChild(coyote);
+      coyotes.push(coyote);
+
+      createHawk(coyote.y - model.predatorGapPx - 70);
+    }
+
+    function createHawk(y) {
+      const gameRect = gameArea.getBoundingClientRect();
+      const hawk = document.createElement('div');
+      hawk.className = 'hawk';
+      hawk.innerHTML = `
+        <div class="hawkWing top"></div>
+        <div class="hawkWing bottom"></div>
+        <div class="hawkTail"></div>
+        <div class="hawkBody"></div>
+        <div class="hawkHead">
+          <div class="hawkEye"></div>
+          <div class="hawkBeak"></div>
+        </div>
+      `;
+
+      hawk.x = gameRect.width + 190;
+      hawk.y = Math.max(15, y);
+      hawk.speed = model.hawkSpeed + Math.random() * 60;
+      hawk.style.left = hawk.x + 'px';
+      hawk.style.top = hawk.y + 'px';
+      gameArea.appendChild(hawk);
+      hawks.push(hawk);
+    }
+
+    function triggerGameOver(title, message) {
+      state.paused = true;
+      gameOverTitle.textContent = title;
+      gameOverText.textContent = message;
+      resumeBtn.textContent = 'Reset';
+      gameOver.style.display = 'flex';
+    }
+
+    function pauseForPredator(predatorName) {
+      const predatorEnergyKJ = Math.round(state.tissueEnergyJ / 1000).toLocaleString();
+      const lifetimeConsumedKJ = Math.round(state.eatenEnergyJ / 1000).toLocaleString();
+      const predatorNameLower = predatorName.toLowerCase();
+
+      let message;
+      if (state.eatenEnergyJ <= 0) {
+        message = `Oh no, you got caught by a ${predatorNameLower}! You had eaten zero bugs, so the ${predatorNameLower} got zero energy from you.`;
+      } else {
+        message = `Oh no, you got caught by a ${predatorNameLower}! Well, at least the ${predatorNameLower} got ${predatorEnergyKJ} kJ of energy, even though you had eaten ${lifetimeConsumedKJ} kJ of energy in your birdy life.`;
+      }
+
+      triggerGameOver(
+        `Caught by a ${predatorName}!`,
+        message
+      );
+    }
+
+    function pauseForExhaustion() {
+      triggerGameOver(
+        'The Bird Ran Out of Energy!',
+        'The bird did not catch enough insects to keep flying and hit the ground. Press Reset to start over.'
+      );
     }
 
     function createPoop(mass, energy) {
@@ -641,11 +1038,11 @@
       state.poopEnergyJ += energy * model.excrementFraction;
 
       state.heatEnergyJ += energy * model.heatFraction;
+      state.flightEnergyJ = Math.min(model.maxFlightEnergyJ, state.flightEnergyJ + energy * model.flightEnergyGainFraction);
+      updateFlightEnergyBar();
       state.birdScale = Math.min(model.adultBirdScale, state.birdScale + model.growthPerBug);
 
       showFloatingText('+ insect', bug.x, bug.y - 12, 'eatText');
-      showFloatingText('heat', 145, state.birdY + 4, 'heatPuff');
-
       const poopMass = mass * model.excrementFraction;
       const poopEnergy = energy * model.excrementFraction;
       setTimeout(() => {
@@ -658,15 +1055,30 @@
       updateScoreboard();
     }
 
+
+    function updateFlightEnergy(dt) {
+      state.flightEnergyJ = Math.max(0, state.flightEnergyJ - model.flightEnergyDrainJPerSecond * dt);
+      updateFlightEnergyBar();
+    }
+
     function updateBird(dt) {
       const gameRect = gameArea.getBoundingClientRect();
+      const energyPercent = state.flightEnergyJ / model.maxFlightEnergyJ;
 
-      if (keys.ArrowUp) {
-        state.birdVelocityY = -model.birdMoveSpeed;
-      } else if (keys.ArrowDown) {
-        state.birdVelocityY = model.birdMoveSpeed;
+      if (state.flightEnergyJ <= 0) {
+        state.birdVelocityY = model.exhaustedFallSpeed;
       } else {
-        state.birdVelocityY = 0;
+        const speedFraction = model.minimumMoveSpeedFraction + (1 - model.minimumMoveSpeedFraction) * energyPercent;
+        const currentMoveSpeed = model.birdMoveSpeed * speedFraction;
+        const sinkSpeed = model.lowEnergySinkSpeed * (1 - energyPercent);
+
+        if (keys.ArrowUp) {
+          state.birdVelocityY = -currentMoveSpeed + sinkSpeed;
+        } else if (keys.ArrowDown) {
+          state.birdVelocityY = currentMoveSpeed + sinkSpeed;
+        } else {
+          state.birdVelocityY = sinkSpeed;
+        }
       }
 
       state.birdY += state.birdVelocityY * dt;
@@ -680,6 +1092,7 @@
       if (state.birdY > maxY) {
         state.birdY = maxY;
         state.birdVelocityY = 0;
+        pauseForExhaustion();
       }
 
       bird.style.top = state.birdY + 'px';
@@ -709,6 +1122,51 @@
       }
     }
 
+    function updateCoyotes(dt, now) {
+      if (now - state.lastCoyoteSpawn > model.coyoteSpawnIntervalMs) {
+        createCoyote();
+        state.lastCoyoteSpawn = now;
+      }
+
+      const birdRect = bird.getBoundingClientRect();
+      for (let i = coyotes.length - 1; i >= 0; i--) {
+        const coyote = coyotes[i];
+        coyote.x -= coyote.speed * dt;
+        coyote.style.left = coyote.x + 'px';
+
+        const coyoteRect = makeFrontHitbox(coyote.getBoundingClientRect(), model.coyoteHitboxWidth);
+        if (rectsOverlap(birdRect, coyoteRect)) {
+          pauseForPredator('Coyote');
+          return;
+        }
+
+        if (coyote.x < -190) {
+          coyote.remove();
+          coyotes.splice(i, 1);
+        }
+      }
+    }
+
+    function updateHawks(dt) {
+      const birdRect = bird.getBoundingClientRect();
+      for (let i = hawks.length - 1; i >= 0; i--) {
+        const hawk = hawks[i];
+        hawk.x -= hawk.speed * dt;
+        hawk.style.left = hawk.x + 'px';
+
+        const hawkRect = makeCenteredHitbox(hawk.getBoundingClientRect(), model.hawkHitboxWidth);
+        if (rectsOverlap(birdRect, hawkRect)) {
+          pauseForPredator('Hawk');
+          return;
+        }
+
+        if (hawk.x < -190) {
+          hawk.remove();
+          hawks.splice(i, 1);
+        }
+      }
+    }
+
     function updatePoops(dt, now) {
       const gameRect = gameArea.getBoundingClientRect();
       for (let i = poops.length - 1; i >= 0; i--) {
@@ -732,9 +1190,12 @@
       state.lastTime = now;
 
       if (!state.paused) {
+        updateFlightEnergy(dt);
         updateBird(dt);
         updateBugs(dt, now);
         updatePoops(dt, now);
+        updateCoyotes(dt, now);
+        updateHawks(dt);
       }
 
       requestAnimationFrame(loop);
@@ -750,17 +1211,24 @@
       state.poopMassKg = 0;
       state.poopEnergyJ = 0;
       state.heatEnergyJ = 0;
+      state.flightEnergyJ = model.maxFlightEnergyJ;
       state.birdScale = model.startingBirdScale;
       state.lastBugSpawn = 0;
+      state.lastCoyoteSpawn = 0;
       state.paused = false;
       state.lastTime = performance.now();
       bird.style.top = state.birdY + 'px';
       bird.style.transform = `scale(${state.birdScale}) rotate(0deg)`;
+      gameOverTitle.textContent = 'Simulation Paused';
+      gameOverText.textContent = 'This model is meant to show that energy transfer through a food chain is inefficient. Predators do not get all of the biomass or energy their prey consumed during life.';
+      resumeBtn.textContent = 'Resume';
       gameOver.style.display = 'none';
 
       bugs.splice(0).forEach(b => b.remove());
       poops.splice(0).forEach(p => p.remove());
-      document.querySelectorAll('.eatText, .heatPuff').forEach(el => el.remove());
+      coyotes.splice(0).forEach(c => c.remove());
+      hawks.splice(0).forEach(h => h.remove());
+      document.querySelectorAll('.eatText').forEach(el => el.remove());
       updateScoreboard();
     }
 
@@ -786,6 +1254,11 @@
 
     resetBtn.addEventListener('click', resetGame);
     resumeBtn.addEventListener('click', () => {
+      if (resumeBtn.textContent === 'Reset') {
+        resetGame();
+        return;
+      }
+
       state.paused = false;
       gameOver.style.display = 'none';
       state.lastTime = performance.now();
