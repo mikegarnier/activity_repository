@@ -515,7 +515,9 @@
       startingBirdScale: 0.60,
       adultBirdScale: 1.45,
       growthPerBug: 0.018,
-      dialMaxKJ: 6000
+      dialMaxKJ: 6000,
+      birdMoveSpeed: 420,
+      birdTurnTilt: 10
     };
 
     const state = {
@@ -590,7 +592,7 @@
       bug.dataset.energyJ = mass * model.insectEnergyDensity;
       bug.x = gameRect.width + 40;
       bug.y = 50 + Math.random() * Math.max(80, gameRect.height - 170);
-      bug.speed = 288 + Math.random() * 144;
+      bug.speed = 170 + Math.random() * 90;
 
       bug.style.left = bug.x + 'px';
       bug.style.top = bug.y + 'px';
@@ -658,13 +660,15 @@
 
     function updateBird(dt) {
       const gameRect = gameArea.getBoundingClientRect();
-      const acceleration = 1850;
-      const drag = 0.22;
 
-      if (keys.ArrowUp) state.birdVelocityY -= acceleration * dt;
-      if (keys.ArrowDown) state.birdVelocityY += acceleration * dt;
+      if (keys.ArrowUp) {
+        state.birdVelocityY = -model.birdMoveSpeed;
+      } else if (keys.ArrowDown) {
+        state.birdVelocityY = model.birdMoveSpeed;
+      } else {
+        state.birdVelocityY = 0;
+      }
 
-      state.birdVelocityY *= Math.pow(drag, dt * 60);
       state.birdY += state.birdVelocityY * dt;
 
       const minY = 10;
@@ -679,7 +683,7 @@
       }
 
       bird.style.top = state.birdY + 'px';
-      bird.style.transform = `scale(${state.birdScale}) rotate(${Math.max(-14, Math.min(14, state.birdVelocityY / 45))}deg)`;
+      bird.style.transform = `scale(${state.birdScale}) rotate(${Math.max(-model.birdTurnTilt, Math.min(model.birdTurnTilt, state.birdVelocityY / 45))}deg)`;
     }
 
     function updateBugs(dt, now) {
