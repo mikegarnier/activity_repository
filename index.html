@@ -35,17 +35,17 @@
 
     li {
       margin: 10px 0;
-      padding: 10px 14px;
+      padding: 14px 18px;
       border: 1px solid #ddd;
       border-radius: 8px;
       background: #fafafa;
+      font-size: 1.2rem;
     }
 
     a {
       text-decoration: none;
       color: #0066cc;
       font-weight: bold;
-      font-size: 1.1rem;
     }
 
     a:hover {
@@ -69,13 +69,6 @@
   <ul id="activityList"></ul>
 
   <script>
-    const username = "mikegarnier";
-    const repo = "activity_repository";
-    const branch = "main";
-
-    const apiUrl = `https://api.github.com/repos/${username}/${repo}/contents/?ref=${branch}`;
-    const baseUrl = `https://${username}.github.io/${repo}/`;
-
     const activityList = document.getElementById("activityList");
     const status = document.getElementById("status");
 
@@ -88,73 +81,45 @@
 
     async function loadActivities() {
       try {
-        status.textContent = "Loading activities...";
-
-        const response = await fetch(apiUrl);
+        const response = await fetch("activities.json");
 
         if (!response.ok) {
-          throw new Error(`GitHub API error: ${response.status}`);
+          throw new Error(`Could not load activities.json: ${response.status}`);
         }
 
-        const items = await response.json();
+        const activities = await response.json();
 
-        const folders = items.filter(item =>
-          item.type === "dir" &&
-          !item.name.startsWith(".") &&
-          item.name !== "assets"
-        );
-
-        if (folders.length === 0) {
-          status.textContent = "No activity folders found.";
+        if (!Array.isArray(activities) || activities.length === 0) {
+          status.textContent = "No activities found in activities.json.";
           return;
         }
 
-        folders.sort((a, b) => a.name.localeCompare(b.name));
+        activityList.innerHTML = "";
 
-        let addedCount = 0;
+        activities.forEach(activity => {
+          const folder = activity.folder;
+          const title = activity.title || prettyName(folder);
 
-        for (const folder of folders) {
-          const folderContentsUrl =
-            `https://api.github.com/repos/${username}/${repo}/contents/${folder.name}?ref=${branch}`;
-
-          const folderResponse = await fetch(folderContentsUrl);
-
-          if (!folderResponse.ok) {
-            console.warn(`Could not read folder: ${folder.name}`);
-            continue;
-          }
-
-          const folderItems = await folderResponse.json();
-
-          const hasIndex = folderItems.some(file =>
-            file.type === "file" &&
-            file.name.toLowerCase() === "index.html"
-          );
-
-          if (!hasIndex) continue;
+          if (!folder) return;
 
           const li = document.createElement("li");
           const link = document.createElement("a");
 
-          link.href = `${baseUrl}${folder.name}/`;
-          link.textContent = prettyName(folder.name);
+          link.href = `${folder}/`;
+          link.textContent = title;
 
           li.appendChild(link);
           activityList.appendChild(li);
+        });
 
-          addedCount++;
-        }
-
-        status.textContent = addedCount > 0
-          ? `Found ${addedCount} activities.`
-          : "No folders with index.html were found.";
+        status.textContent = `Found ${activities.length} activities.`;
 
       } catch (error) {
         console.error(error);
 
         status.innerHTML = `
           Could not load activities automatically.<br>
-          Check that the GitHub username, repo name, and branch are correct.
+          Make sure <strong>activities.json</strong> exists in the same folder as this index page.
         `;
       }
     }
