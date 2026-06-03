@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Science Activities</title>
+
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -17,11 +18,13 @@
     h1 {
       text-align: center;
       margin-bottom: 10px;
+      font-size: 3rem;
     }
 
     p {
       text-align: center;
       color: #555;
+      font-size: 1.2rem;
     }
 
     ul {
@@ -42,6 +45,7 @@
       text-decoration: none;
       color: #0066cc;
       font-weight: bold;
+      font-size: 1.1rem;
     }
 
     a:hover {
@@ -52,9 +56,11 @@
       text-align: center;
       margin-top: 30px;
       color: #666;
+      font-size: 1.1rem;
     }
   </style>
 </head>
+
 <body>
   <h1>Physics Activity Simulations</h1>
   <p>Click any activity below to open it.</p>
@@ -65,19 +71,25 @@
   <script>
     const username = "mikegarnier";
     const repo = "activity_repository";
-    const branch = "main"; // change to "master" if your repo uses master
-    const apiUrl = `https://api.github.com/repos/${username}/${repo}/contents/`;
+    const branch = "main";
+
+    const apiUrl = `https://api.github.com/repos/${username}/${repo}/contents/?ref=${branch}`;
     const baseUrl = `https://${username}.github.io/${repo}/`;
 
     const activityList = document.getElementById("activityList");
     const status = document.getElementById("status");
 
     function prettyName(folderName) {
-      return folderName.replaceAll("_", " ");
+      return folderName
+        .replaceAll("_", " ")
+        .replaceAll("-", " ")
+        .replace(/\b\w/g, letter => letter.toUpperCase());
     }
 
     async function loadActivities() {
       try {
+        status.textContent = "Loading activities...";
+
         const response = await fetch(apiUrl);
 
         if (!response.ok) {
@@ -86,7 +98,6 @@
 
         const items = await response.json();
 
-        // Keep only folders, and ignore hidden/system folders if needed
         const folders = items.filter(item =>
           item.type === "dir" &&
           !item.name.startsWith(".") &&
@@ -98,20 +109,27 @@
           return;
         }
 
-        // Optional: sort alphabetically
         folders.sort((a, b) => a.name.localeCompare(b.name));
 
         let addedCount = 0;
 
         for (const folder of folders) {
-          // Check whether the folder contains index.html
-          const folderContentsUrl = `https://api.github.com/repos/${username}/${repo}/contents/${folder.name}?ref=${branch}`;
+          const folderContentsUrl =
+            `https://api.github.com/repos/${username}/${repo}/contents/${folder.name}?ref=${branch}`;
+
           const folderResponse = await fetch(folderContentsUrl);
 
-          if (!folderResponse.ok) continue;
+          if (!folderResponse.ok) {
+            console.warn(`Could not read folder: ${folder.name}`);
+            continue;
+          }
 
           const folderItems = await folderResponse.json();
-          const hasIndex = folderItems.some(file => file.name.toLowerCase() === "index.html");
+
+          const hasIndex = folderItems.some(file =>
+            file.type === "file" &&
+            file.name.toLowerCase() === "index.html"
+          );
 
           if (!hasIndex) continue;
 
@@ -123,15 +141,21 @@
 
           li.appendChild(link);
           activityList.appendChild(li);
+
           addedCount++;
         }
 
         status.textContent = addedCount > 0
           ? `Found ${addedCount} activities.`
           : "No folders with index.html were found.";
+
       } catch (error) {
         console.error(error);
-        status.textContent = "Could not load activities automatically.";
+
+        status.innerHTML = `
+          Could not load activities automatically.<br>
+          Check that the GitHub username, repo name, and branch are correct.
+        `;
       }
     }
 
