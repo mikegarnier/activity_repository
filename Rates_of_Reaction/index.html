@@ -163,6 +163,12 @@
     transition: background 0.25s ease, transform 0.15s ease;
   }
   .well:hover { outline: 4px solid rgba(37, 99, 235, .18); }
+
+  .plate-wrap,
+  .plate,
+  .well {
+    cursor: crosshair;
+  }
   .well.selected { outline: 4px solid rgba(37, 99, 235, .35); }
   .well.loaded {
     background: radial-gradient(circle at 35% 35%, #ffffff, #dbeafe 72%);
@@ -240,13 +246,29 @@
     color: #9a3412;
     text-align: center;
     font-weight: 700;
-    font-size: 32px;
+    font-size: 16px;
     box-sizing: border-box;
     transition: opacity 0.15s ease;
   }
   .timer-prompt.show {
     visibility: visible;
     opacity: 1;
+  }
+  .data-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .data-header h2 {
+    margin: 0;
+  }
+  .clear-data-button {
+    padding: 6px 10px;
+    font-size: 13px;
+    border-radius: 8px;
+    background: #f8fafc;
   }
   table {
     width: 100%;
@@ -278,8 +300,8 @@
 <body>
 <div id="message" style="display:none;"></div>
 <header>
-  <h1>Rates of Reaction Lab</h1>
-  <div>Using the lab paper provided, add the correct amounts of KIO₃, H₂O, and Na₂S₂O₅ to each well, and precisely time the reaction.</div>
+  <h1>Rates of Reaction Lab – 6 Well</h1>
+  <div>KIO₃ + Na₂S₂O₅</div>
 </header>
 
 <main>
@@ -328,7 +350,10 @@
   </section>
 
   <aside class="card">
-    <h2>Data</h2>
+    <div class="data-header">
+      <h2>Data</h2>
+      <button id="clearData" class="clear-data-button">Clear Data</button>
+    </div>
     <table>
       <thead>
         <tr>
@@ -360,6 +385,7 @@ let selected = 0;
 let activeRun = null;
 let addHistory = [];
 let runCounter = 0;
+let recordedData = [];
 
 const wells = wellLabels.map((label, index) => ({
   id: index,
@@ -380,6 +406,38 @@ const timer = document.getElementById("timer");
 const dataTable = document.getElementById("dataTable");
 const message = document.getElementById("message");
 const timerPrompt = document.getElementById("timerPrompt");
+
+function syringeCursor(color) {
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 32 32">
+      <g fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6 26 L19 13"/>
+        <path d="M16 10 L22 16"/>
+        <path d="M18 8 L24 14"/>
+        <path d="M21 5 L27 11"/>
+        <path d="M10 22 L5 27"/>
+        <path d="M4 28 L8 24"/>
+        <path d="M15 17 L20 22"/>
+      </g>
+      <g fill="white" stroke="${color}" stroke-width="2" stroke-linejoin="round">
+        <rect x="13" y="11" width="10" height="7" rx="1" transform="rotate(-45 18 14.5)"/>
+      </g>
+    </svg>
+  `;
+  return `url("data:image/svg+xml,${encodeURIComponent(svg)}") 4 28, crosshair`;
+}
+
+function updatePlateCursor() {
+  let color = "#0ea5e9"; // water blue
+  if (activeTool === "kio3") color = "#7c3aed";       // iodate purple
+  if (activeTool === "bisulfite") color = "#22c55e";  // bisulfite green
+
+  const cursorValue = syringeCursor(color);
+  document.querySelectorAll(".plate-wrap, .plate, .well").forEach(el => {
+    el.style.cursor = cursorValue;
+  });
+}
+
 
 function fmt(n) {
   return Number.isInteger(n) ? String(n) : n.toFixed(1);
@@ -429,16 +487,15 @@ function renderPlate() {
 
 
 function renderTable() {
-  dataTable.innerHTML = wells
-    .filter(w => w.recorded !== null)
-    .map(w => `
+  dataTable.innerHTML = recordedData
+    .map(row => `
       <tr>
-        <td>${w.label}</td>
-        <td>${temps[w.bath].f} °F</td>
-        <td>${fmt(w.kio3)}</td>
-        <td>${fmt(w.bisulfite)}</td>
-        <td>${fmt(w.water)}</td>
-        <td>${w.recorded.toFixed(1)}</td>
+        <td>${row.well}</td>
+        <td>${row.temp} °F</td>
+        <td>${fmt(row.kio3)}</td>
+        <td>${fmt(row.bisulfite)}</td>
+        <td>${fmt(row.water)}</td>
+        <td>${row.time.toFixed(1)}</td>
       </tr>
     `).join("");
 }
@@ -446,6 +503,11 @@ function renderTable() {
 function render() {
   renderPlate();
   renderTable();
+
+  // The wells are redrawn after clicks, so re-apply the selected syringe cursor.
+  if (typeof updatePlateCursor === "function") {
+    updatePlateCursor();
+  }
 }
 
 function calculateReactionTime(well) {
@@ -585,6 +647,7 @@ document.querySelectorAll(".tool").forEach(btn => {
     document.querySelectorAll(".tool").forEach(b => b.classList.remove("active"));
     btn.classList.add("active");
     activeTool = btn.dataset.tool;
+    updatePlateCursor();
     message.textContent = `Selected ${activeToolLabel()} pipette. Click a well to add that amount in mL.`;
   });
 });
@@ -594,7 +657,13 @@ document.querySelectorAll(".bath").forEach(btn => {
     document.querySelectorAll(".bath").forEach(b => b.classList.remove("active"));
     btn.classList.add("active");
     activeBath = btn.dataset.bath;
-    wells[selected].bath = activeBath;
+
+    // Do not change the temperature of a completed or currently running trial.
+    // The selected bath applies to the next liquid additions/new trial.
+    if (wells[selected].status === "empty" || wells[selected].status === "loaded") {
+      wells[selected].bath = activeBath;
+    }
+
     message.textContent = `Selected ${temps[activeBath].f} °F water bath.`;
     render();
   });
@@ -632,6 +701,16 @@ document.getElementById("stopWell").addEventListener("click", () => {
 
   well.status = "done";
   well.recorded = elapsed;
+
+  recordedData.push({
+    well: well.label,
+    temp: temps[well.bath].f,
+    kio3: well.kio3,
+    bisulfite: well.bisulfite,
+    water: well.water,
+    time: elapsed
+  });
+
   activeRun = null;
   timer.textContent = `${elapsed.toFixed(1)} s`;
   timerPrompt.classList.remove("show");
@@ -671,6 +750,14 @@ document.getElementById("undoButton").addEventListener("click", () => {
   render();
 });
 
+
+document.getElementById("clearData").addEventListener("click", () => {
+  recordedData = [];
+  message.textContent = "Data table cleared.";
+  renderTable();
+});
+
+
 document.getElementById("resetAll").addEventListener("click", () => {
   activeRun = null;
   timer.textContent = "0.0 s";
@@ -690,11 +777,12 @@ document.getElementById("resetAll").addEventListener("click", () => {
 
   selected = 0;
   addHistory = [];
-  message.textContent = "Lab reset. Add water first if needed, then KIO₃, then Na₂S₂O₅ to start the reaction.";
+  message.textContent = "Lab reset. The wells were cleared, but the data table was kept.";
   render();
 });
 
 render();
+updatePlateCursor();
 </script>
 </body>
 </html>
