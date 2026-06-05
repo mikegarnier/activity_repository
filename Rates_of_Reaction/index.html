@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Rates of Reaction Lab Simulator – 6-Well</title>
+<style>
+  :root {
+    --bg: #eef3f7;
+    --panel: #ffffff;
+    --ink: #1f2937;
+    --muted: #64748b;
+    --line: #cbd5e1;
+    --accent: #2563eb;
+  }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+  }
+  header {
+    padding: 14px 20px;
+    background: #111827;
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  header h1 { font-size: 20px; margin: 0; }
+  main {
+    display: grid;
+    grid-template-columns: 290px 1fr 300px;
+    gap: 14px;
+    padding: 14px;
+  }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 14px;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+  }
+  h2 { font-size: 17px; margin: 0 0 10px; }
+  h3 { font-size: 14px; margin: 14px 0 8px; color: var(--muted); }
+  button, input { font: inherit; }
+  button {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: white;
+    padding: 9px 10px;
+    cursor: pointer;
+  }
+  button.primary {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+  }
+  button.danger {
+    background: #fee2e2;
+    border-color: #fecaca;
+  }
+  button:hover { filter: brightness(0.97); }
+
+  .tool-grid { display: grid; gap: 8px; }
+  .tool {
+    text-align: left;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .tool.active {
+    outline: 3px solid rgba(37, 99, 235, .25);
+    border-color: var(--accent);
+  }
+  .pill {
+    font-size: 12px;
+    color: white;
+    padding: 3px 8px;
+    border-radius: 999px;
+  }
+  .kio3 { background: #7c3aed; }
+  .bisulfite { background: #0891b2; }
+  .water { background: #0ea5e9; }
+
+  .meter {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 8px 0;
+  }
+  .meter input { width: 80px; }
+
+  .baths { display: grid; gap: 8px; }
+  .bath {
+    border: 2px solid var(--line);
+    border-radius: 14px;
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .bath.active {
+    border-color: var(--accent);
+    background: #eff6ff;
+  }
+
+  .lab-area { display: flex; flex-direction: column; gap: 14px; }
+  .bench {
+    min-height: 420px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
+    position: relative;
+    padding-top: 20px;
+    gap: 14px;
+  }
+  .undo-button {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    border: 2px solid var(--line);
+    background: white;
+    font-size: 26px;
+    line-height: 1;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    box-shadow: 0 2px 7px rgba(15, 23, 42, 0.12);
+  }
+  .undo-button:hover {
+    border-color: var(--accent);
+    background: #eff6ff;
+  }
+  .plate-wrap {
+    background: #e5e7eb;
+    padding: 18px;
+    border-radius: 24px;
+    border: 3px solid #9ca3af;
+  }
+  .plate {
+    display: grid;
+    grid-template-columns: repeat(3, 112px);
+    grid-template-rows: repeat(2, 112px);
+    gap: 18px 30px;
+  }
+  .well {
+    width: 112px;
+    height: 112px;
+    border-radius: 50%;
+    border: 4px inset #cbd5e1;
+    background: radial-gradient(circle at 35% 35%, #ffffff, #dbeafe 72%);
+    display: grid;
+    place-items: center;
+    position: relative;
+    cursor: pointer;
+    overflow: visible;
+    user-select: none;
+    transition: background 0.25s ease, transform 0.15s ease;
+  }
+  .well:hover { outline: 4px solid rgba(37, 99, 235, .18); }
+  .well.selected { outline: 4px solid rgba(37, 99, 235, .35); }
+  .well.loaded {
+    background: radial-gradient(circle at 35% 35%, #ffffff, #dbeafe 72%);
+  }
+  .well.reacting {
+    animation: pulse 0.8s infinite alternate;
+    background: radial-gradient(circle at 35% 35%, #ffffff, #dbeafe 72%);
+  }
+  @keyframes pulse {
+    from { transform: scale(1); }
+    to { transform: scale(1.03); }
+  }
+  .well.done,
+  .well.changed {
+    background: radial-gradient(circle at 35% 35%, #a855f7, #581c87 72%);
+    color: white;
+  }
+  .well.unused {
+    opacity: 0.35;
+    pointer-events: none;
+  }
+  .well-label {
+    position: absolute;
+    top: -22px;
+    left: -8px;
+    font-size: 14px;
+    color: #475569;
+    font-weight: 700;
+    background: transparent;
+    pointer-events: none;
+  }
+  .well.done .well-label,
+  .well.changed .well-label { color: white; }
+  .drops {
+    font-size: 15px;
+    text-align: center;
+    line-height: 1.25;
+    font-weight: 600;
+  }
+  .well.done .drops,
+  .well.changed .drops { text-shadow: 0 1px 2px rgba(0,0,0,.55); }
+  .small-status {
+    position: absolute;
+    bottom: 6px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .controls {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+  .timer {
+    font-size: 38px;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+    font-weight: 800;
+    background: #f8fafc;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 12px;
+    max-width: 260px;
+    margin: 0 auto;
+  }
+  .timer-prompt {
+    visibility: hidden;
+    opacity: 0;
+    max-width: 520px;
+    min-height: 48px;
+    margin: 0 auto;
+    padding: 10px 14px;
+    border-radius: 12px;
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    color: #9a3412;
+    text-align: center;
+    font-weight: 700;
+    font-size: 32px;
+    box-sizing: border-box;
+    transition: opacity 0.15s ease;
+  }
+  .timer-prompt.show {
+    visibility: visible;
+    opacity: 1;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  th, td {
+    border-bottom: 1px solid var(--line);
+    padding: 6px 4px;
+    text-align: left;
+  }
+  th { color: var(--muted); }
+  .note {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.35;
+  }
+  .live-message {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: #1e3a8a;
+    border-radius: 10px;
+    padding: 9px;
+    font-size: 13px;
+    margin-top: 10px;
+  }
+</style>
+</head>
+<body>
+<div id="message" style="display:none;"></div>
+<header>
+  <h1>Rates of Reaction Lab</h1>
+  <div>Using the lab paper provided, add the correct amounts of KIO₃, H₂O, and Na₂S₂O₅ to each well, and precisely time the reaction.</div>
+</header>
+
+<main>
+  <section class="card">
+    <h2>1. Choose a pipette</h2>
+    <div class="tool-grid">
+      <button class="tool active" data-tool="water">Water <span class="pill water">H₂O</span></button>
+      <button class="tool" data-tool="kio3">KIO₃ <span class="pill kio3">iodate</span></button>
+      <button class="tool" data-tool="bisulfite">Na₂S₂O₅ <span class="pill bisulfite">bisulfite</span></button>
+    </div>
+
+    <h3>mL added per click</h3>
+    <div class="meter">
+      <button id="minusAmount">−</button>
+      <input id="amount" type="number" min="1" max="10" step="1" value="1"/>
+      <button id="plusAmount">+</button>
+    </div>
+
+    <h2>2. Temperature bath</h2>
+    <div class="baths">
+      <button class="bath" data-bath="cold"><span>Cold</span><span>46 °F</span></button>
+      <button class="bath active" data-bath="room"><span>Room</span><span>72 °F</span></button>
+      <button class="bath" data-bath="hot"><span>Hot</span><span>113 °F</span></button>
+    </div>
+  </section>
+
+  <section class="lab-area">
+    <div class="card bench">
+      <button id="undoButton" class="undo-button" title="Undo last liquid added">↶</button>
+      <div class="plate-wrap">
+        <div id="plate" class="plate"></div>
+      </div>
+      <div id="timerPrompt" class="timer-prompt">Watch the well carefully and stop the timer exactly when the color changes!</div>
+    </div>
+
+    
+    <div class="card">
+      <div id="timer" class="timer">0.0 s</div>
+    </div>
+
+    <div class="card controls">
+      <button class="primary" id="startWell">Start</button>
+      <button id="stopWell">Stop / Record</button>
+      <button class="danger" id="resetAll">Reset</button>
+    </div>
+  </section>
+
+  <aside class="card">
+    <h2>Data</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Well</th>
+          <th>Temp</th>
+          <th>KIO₃</th>
+          <th>Na₂S₂O₅</th>
+          <th>H₂O</th>
+          <th>t (s)</th>
+        </tr>
+      </thead>
+      <tbody id="dataTable"></tbody>
+    </table>
+  </aside>
+</main>
+
+<script>
+const temps = {
+  cold: { label: "Cold", f: 46, factor: 0.45 },
+  room: { label: "Room", f: 72, factor: 1.00 },
+  hot: { label: "Hot", f: 113, factor: 2.60 }
+};
+
+const wellLabels = ["1", "2", "3", "4", "5", "6"];
+
+let activeTool = "water";
+let activeBath = "room";
+let selected = 0;
+let activeRun = null;
+let addHistory = [];
+let runCounter = 0;
+
+const wells = wellLabels.map((label, index) => ({
+  id: index,
+  label,
+  kio3: 0,
+  bisulfite: 0,
+  water: 0,
+  bath: "room",
+  status: "empty",
+  predicted: null,
+  recorded: null,
+  startedAt: null,
+  runId: null
+}));
+
+const plate = document.getElementById("plate");
+const timer = document.getElementById("timer");
+const dataTable = document.getElementById("dataTable");
+const message = document.getElementById("message");
+const timerPrompt = document.getElementById("timerPrompt");
+
+function fmt(n) {
+  return Number.isInteger(n) ? String(n) : n.toFixed(1);
+}
+
+function activeToolLabel() {
+  if (activeTool === "kio3") return "KIO₃";
+  if (activeTool === "bisulfite") return "Na₂S₂O₅";
+  return "water";
+}
+
+function renderPlate() {
+  plate.innerHTML = "";
+
+  wells.forEach((well, i) => {
+    const div = document.createElement("div");
+    div.className = `well ${well.status}`;
+    if (i === selected) div.classList.add("selected");
+    if (well.status === "running") div.classList.add("reacting");
+    if (i === 5) div.classList.add("unused");
+
+    let statusText = "";
+    if (well.status === "running") statusText = "reacting";
+    if (well.status === "changed") statusText = "color changed";
+    if (well.status === "done") statusText = "recorded";
+    if (i === 5) statusText = "unused";
+
+    div.innerHTML = `
+      <div class="well-label">${well.label}</div>
+      <div class="drops">
+        KIO₃: ${fmt(well.kio3)} mL<br>
+        Na₂S₂O₅: ${fmt(well.bisulfite)} mL<br>
+        H₂O: ${fmt(well.water)} mL
+      </div>
+      <div class="small-status">${statusText}</div>
+    `;
+
+    div.addEventListener("click", () => {
+      selected = i;
+      addLiquidToWell(i);
+    });
+
+    plate.appendChild(div);
+  });
+}
+
+
+
+function renderTable() {
+  dataTable.innerHTML = wells
+    .filter(w => w.recorded !== null)
+    .map(w => `
+      <tr>
+        <td>${w.label}</td>
+        <td>${temps[w.bath].f} °F</td>
+        <td>${fmt(w.kio3)}</td>
+        <td>${fmt(w.bisulfite)}</td>
+        <td>${fmt(w.water)}</td>
+        <td>${w.recorded.toFixed(1)}</td>
+      </tr>
+    `).join("");
+}
+
+function render() {
+  renderPlate();
+  renderTable();
+}
+
+function calculateReactionTime(well) {
+  if (well.kio3 <= 0 || well.bisulfite <= 0) return null;
+
+  const totalVolume = Math.max(0.1, well.kio3 + well.bisulfite + well.water);
+
+  // Classroom model:
+  // Higher reactant concentration = faster.
+  // More water = lower concentration = slower.
+  // Temperature multiplies the rate.
+  const kio3Conc = well.kio3 / totalVolume;
+  const bisulfiteConc = well.bisulfite / totalVolume;
+
+  const concentrationRate = Math.sqrt(kio3Conc * bisulfiteConc);
+  const amountRate = Math.sqrt(well.kio3 + well.bisulfite) / 2.2;
+  const tempRate = temps[well.bath].factor;
+
+  const rate = Math.max(0.02, concentrationRate * amountRate * tempRate);
+
+  const randomTrialVariation = 0.92 + Math.random() * 0.16;
+  const seconds = (3 / rate) * randomTrialVariation;
+
+  return Math.max(2.5, Math.min(150, seconds));
+}
+
+function startReaction(index, reason = "manual") {
+  if (index === 5) return;
+
+  const well = wells[index];
+
+  if (activeRun !== null) {
+    message.textContent = "A reaction is already running. Wait for it to finish or stop it first.";
+    return;
+  }
+
+  if (well.status === "done") {
+    message.textContent = `${well.label} already has recorded data. Reset the lab to redo it.`;
+    return;
+  }
+
+  const predicted = calculateReactionTime(well);
+
+  if (!predicted) {
+    message.textContent = "Add both KIO₃ and Na₂S₂O₅ before starting.";
+    return;
+  }
+
+  well.bath = activeBath;
+  well.predicted = predicted;
+  well.recorded = null;
+  well.status = "running";
+  well.startedAt = performance.now();
+  well.runId = ++runCounter;
+  activeRun = index;
+
+  timer.textContent = "0.0 s";
+  timerPrompt.classList.add("show");
+
+  if (reason === "auto") {
+    message.textContent = `${well.label} started automatically when the second reactant was added.`;
+  } else {
+    message.textContent = `${well.label} started. Watch for the color change.`;
+  }
+
+  render();
+  requestAnimationFrame(() => tick(well.runId));
+}
+
+function tick(runId) {
+  if (activeRun === null) return;
+
+  const well = wells[activeRun];
+  if (!well || well.runId !== runId) return;
+  if (well.status !== "running" && well.status !== "changed") return;
+
+  const elapsed = (performance.now() - well.startedAt) / 1000;
+  timer.textContent = `${elapsed.toFixed(1)} s`;
+
+  if (elapsed >= well.predicted && well.status === "running") {
+    well.status = "changed";
+    message.textContent = `${well.label} changed color. Press Stop / Record to record the student's observed time.`;
+    render();
+  }
+
+  requestAnimationFrame(() => tick(runId));
+}
+
+function addLiquidToWell(index) {
+  if (index === 5) return;
+
+  const well = wells[index];
+
+  if (well.status === "running" || well.status === "changed") {
+    message.textContent = `${well.label} is already reacting. Press Stop / Record when you observe the color change.`;
+    selected = index;
+    render();
+    return;
+  }
+
+  if (well.status === "done") {
+    message.textContent = `${well.label} already has recorded data. Reset the lab to redo it.`;
+    selected = index;
+    render();
+    return;
+  }
+
+  const amount = Number(document.getElementById("amount").value || 1);
+
+  addHistory.push({
+    wellIndex: index,
+    tool: activeTool,
+    amount: amount
+  });
+
+  if (activeTool === "kio3") well.kio3 += amount;
+  if (activeTool === "bisulfite") well.bisulfite += amount;
+  if (activeTool === "water") well.water += amount;
+
+  well.bath = activeBath;
+  well.status = "loaded";
+  selected = index;
+
+  message.textContent = `Added ${fmt(amount)} mL of ${activeToolLabel()} to ${well.label}.`;
+
+  // In the real procedure, adding the second reactant is the moment the clock starts.
+  if ((activeTool === "bisulfite" && well.kio3 > 0 && well.bisulfite > 0) ||
+      (activeTool === "kio3" && well.kio3 > 0 && well.bisulfite > 0)) {
+    startReaction(index, "auto");
+  } else {
+    render();
+  }
+}
+
+document.querySelectorAll(".tool").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tool").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    activeTool = btn.dataset.tool;
+    message.textContent = `Selected ${activeToolLabel()} pipette. Click a well to add that amount in mL.`;
+  });
+});
+
+document.querySelectorAll(".bath").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".bath").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    activeBath = btn.dataset.bath;
+    wells[selected].bath = activeBath;
+    message.textContent = `Selected ${temps[activeBath].f} °F water bath.`;
+    render();
+  });
+});
+
+document.getElementById("minusAmount").addEventListener("click", () => {
+  const input = document.getElementById("amount");
+  input.value = Math.max(1, Number(input.value) - 1);
+  message.textContent = `Now adding ${fmt(Number(input.value))} mL per well click.`;
+});
+
+document.getElementById("plusAmount").addEventListener("click", () => {
+  const input = document.getElementById("amount");
+  input.value = Math.min(10, Number(input.value) + 1);
+  message.textContent = `Now adding ${fmt(Number(input.value))} mL per well click.`;
+});
+
+document.getElementById("startWell").addEventListener("click", () => {
+  startReaction(selected, "manual");
+});
+
+document.getElementById("stopWell").addEventListener("click", () => {
+  if (activeRun === null) {
+    message.textContent = "No reaction is currently running.";
+    return;
+  }
+
+  const well = wells[activeRun];
+  const elapsed = (performance.now() - well.startedAt) / 1000;
+
+  if (well.status !== "changed") {
+    message.textContent = `${well.label} has not changed color yet. Keep timing.`;
+    return;
+  }
+
+  well.status = "done";
+  well.recorded = elapsed;
+  activeRun = null;
+  timer.textContent = `${elapsed.toFixed(1)} s`;
+  timerPrompt.classList.remove("show");
+  message.textContent = `Student recorded ${well.label}: ${elapsed.toFixed(1)} s.`;
+  render();
+});
+
+document.getElementById("undoButton").addEventListener("click", () => {
+  if (activeRun !== null) {
+    message.textContent = "Stop / Record the running reaction before undoing.";
+    return;
+  }
+
+  const last = addHistory.pop();
+
+  if (!last) {
+    message.textContent = "Nothing to undo yet.";
+    return;
+  }
+
+  const well = wells[last.wellIndex];
+
+  if (well.status === "done") {
+    message.textContent = `${well.label} already has recorded data, so that addition was not undone.`;
+    return;
+  }
+
+  if (last.tool === "kio3") well.kio3 = Math.max(0, well.kio3 - last.amount);
+  if (last.tool === "bisulfite") well.bisulfite = Math.max(0, well.bisulfite - last.amount);
+  if (last.tool === "water") well.water = Math.max(0, well.water - last.amount);
+
+  well.status = (well.kio3 + well.bisulfite + well.water) > 0 ? "loaded" : "empty";
+  selected = last.wellIndex;
+
+  const label = last.tool === "kio3" ? "KIO₃" : last.tool === "bisulfite" ? "Na₂S₂O₅" : "water";
+  message.textContent = `Undid ${fmt(last.amount)} mL of ${label} from ${well.label}.`;
+  render();
+});
+
+document.getElementById("resetAll").addEventListener("click", () => {
+  activeRun = null;
+  timer.textContent = "0.0 s";
+  timerPrompt.classList.remove("show");
+
+  wells.forEach(w => {
+    w.kio3 = 0;
+    w.bisulfite = 0;
+    w.water = 0;
+    w.bath = "room";
+    w.status = "empty";
+    w.predicted = null;
+    w.recorded = null;
+    w.startedAt = null;
+    w.runId = null;
+  });
+
+  selected = 0;
+  addHistory = [];
+  message.textContent = "Lab reset. Add water first if needed, then KIO₃, then Na₂S₂O₅ to start the reaction.";
+  render();
+});
+
+render();
+</script>
+</body>
+</html>
