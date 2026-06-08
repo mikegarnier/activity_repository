@@ -178,6 +178,28 @@
       margin-top: 7px;
     }
 
+    .big-instruction {
+      color: #1d4fa7;
+      background: #f1f3f6;
+      border: 1px solid rgba(23,32,51,0.08);
+      border-radius: 12px;
+      font-size: 1.08rem;
+      line-height: 1.3;
+      font-weight: 900;
+      text-align: center;
+      padding: 12px;
+      margin: 6px 0 10px;
+    }
+
+    .stretch-note {
+      color: #172033;
+      font-size: 0.95rem;
+      line-height: 1.28;
+      font-weight: 900;
+      text-align: center;
+      margin: 10px 0 0;
+    }
+
     .row {
       display: flex;
       gap: 8px;
@@ -210,6 +232,100 @@
       line-height: 1.25;
     }
 
+    .measurement-log {
+      position: absolute;
+      z-index: 6;
+      left: 12px;
+      right: 12px;
+      bottom: 12px;
+      height: 100px;
+      border: 1px solid rgba(23,32,51,0.14);
+      border-radius: 14px;
+      background: rgba(255,255,255,0.94);
+      box-shadow: 0 8px 18px rgba(0,0,0,0.12);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .measurement-log.expanded {
+      height: 600px;
+    }
+
+    .measurement-log-header {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 7px 10px;
+      background: #eef2f7;
+      border-bottom: 1px solid rgba(23,32,51,0.12);
+    }
+
+    .measurement-log-title {
+      font-size: 0.86rem;
+      font-weight: 900;
+      color: #172033;
+    }
+
+    .measurement-log-toggle {
+      flex: 0 0 auto;
+      padding: 5px 9px;
+      border-radius: 9px;
+      font-size: 0.78rem;
+      background: #e5e7eb;
+      color: #374151;
+      box-shadow: none;
+    }
+
+    .measurement-log-toggle:hover {
+      background: #d1d5db;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.10);
+    }
+
+    .measurement-log-body {
+      flex: 1 1 auto;
+      overflow: auto;
+    }
+
+    .measurement-log table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
+
+    .measurement-log th {
+      position: sticky;
+      top: 0;
+      background: #f8fafc;
+      color: #172033;
+      text-align: left;
+      font-weight: 900;
+      padding: 8px 10px;
+      border-bottom: 1px solid rgba(23,32,51,0.12);
+    }
+
+    .measurement-log td {
+      padding: 8px 10px;
+      border-bottom: 1px solid rgba(23,32,51,0.08);
+      color: #374151;
+      font-weight: 700;
+      vertical-align: top;
+    }
+
+    .measurement-log tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .measurement-log-empty {
+      padding: 24px 9px;
+      color: #5d6a7c;
+      font-size: 0.88rem;
+      font-weight: 750;
+      text-align: center;
+    }
+
     .stage-wrap {
       position: relative;
       overflow: hidden;
@@ -239,6 +355,18 @@
       box-shadow: 0 8px 18px rgba(0,0,0,0.12);
     }
 
+    .reset-activity-btn {
+      position: absolute;
+      z-index: 7;
+      top: 12px;
+      right: 12px;
+      min-width: 96px;
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid rgba(153,27,27,0.18);
+      box-shadow: 0 8px 18px rgba(0,0,0,0.12);
+    }
+
     .move-universe-toggle.active {
       background: var(--ink);
       color: white;
@@ -256,7 +384,7 @@
       position: absolute;
       z-index: 6;
       right: 12px;
-      top: 72px;
+      top: 272px;
       width: 230px;
       padding: 12px;
       background: rgba(255,255,255,0.93);
@@ -280,6 +408,15 @@
       font-size: 0.92rem;
     }
 
+    .measure-toolbar button.stop-measuring-btn {
+      background: #e5e7eb;
+      color: #374151;
+    }
+
+    .measure-toolbar button.stop-measuring-btn:hover {
+      background: #d1d5db;
+    }
+
     @media (max-width: 900px) {
       .measure-toolbar {
         position: static;
@@ -301,7 +438,7 @@
 
     canvas {
       width: 100%;
-      height: 660px;
+      height: 800px;
       display: block;
       border-radius: var(--radius);
       background:
@@ -382,7 +519,7 @@
       }
 
       canvas {
-        height: 560px;
+        height: 700px;
       }
     }
   </style>
@@ -390,53 +527,35 @@
 <body>
   <header>
     <h1>Expanding Universe Simulation</h1>
-    <p class="subtitle">
-      Add named galaxies to a one-dimensional bungee universe or a two-dimensional space universe.
-      Then stretch space and measure how distances change.
-    </p>
-  </header>
+      </header>
 
   <main class="app">
     <section class="panel controls">
       <div class="control-block">
         <h2>Universe Type</h2>
         <div class="mode-toggle">
-          <button id="mode1d" class="mode-active">1D Bungee</button>
+          <button id="mode1d" class="mode-active">1D String</button>
           <button id="mode2d">2D Space</button>
         </div>
-        <p class="small-note" id="modeHelp">
-          1D mode: galaxies snap onto the black bungee line.
-        </p>
       </div>
 
       <div class="control-block">
         <h2>Add Galaxies</h2>
-        <button id="autoPlace" class="good" style="width:100%;">Auto Place 5</button>
-        <p class="small-note">
-          Click directly on the black bungee line or inside the black space circle to add a randomly named galaxy.
+        <p class="big-instruction">
+          Click anywhere on the black space to add a randomly named galaxy.
         </p>
         <div class="galaxy-list" id="galaxyList"></div>
       </div>
 
       <div class="control-block">
         <h2>Stretch Space</h2>
-        <label for="stretchSlider">Stretch amount: <span id="stretchLabel">65%</span></label>
-        <input id="stretchSlider" type="range" min="50" max="80" value="65" />
         <div class="row" style="margin-top:8px;">
-          <button id="stretchBtn" class="primary">Apply Stretch</button>
+          <button id="stretchBtn" class="primary">Add Stretch</button>
           <button id="undoStretch">Undo Stretch</button>
         </div>
-        <p class="small-note">
-          Stretch makes the universe larger. Galaxies stay attached to their part of space, so distances increase.
+        <p class="stretch-note">
+          Add as much stretch as you want
         </p>
-      </div>
-
-      <div class="control-block">
-        <h2>Reset</h2>
-        <div class="row">
-          <button id="resetMode" class="warn">Reset This Mode</button>
-          <button id="resetAll" class="warn">Reset All</button>
-        </div>
       </div>
 
       <div class="control-block legend">
@@ -446,34 +565,38 @@
         <div class="legend-item"><span class="sample-measure"></span> distance measurement</div>
       </div>
 
-      <div class="status" id="status">
-        Click the black bungee line or the black space circle to add a randomly named galaxy.
-      </div>
     </section>
 
     <section class="panel stage-wrap">
       <div class="stage-toolbar">
-        <div class="badge" id="scaleBadge">Universe scale: 1.00×</div>
         <div class="badge" id="countBadge">Galaxies: 0</div>
       </div>
 
+      <button id="resetActivityBtn" class="reset-activity-btn">Reset</button>
       <button id="moveUniverseBtn" class="move-universe-toggle">Move Universe: Off</button>
 
       <div class="measure-toolbar">
         <h2>Measure Distance</h2>
         <div class="row">
           <button id="measureBtn" class="primary">Start Measuring</button>
-          <button id="clearMeasure">Clear</button>
+          <button id="clearMeasure" class="stop-measuring-btn">Stop Measuring</button>
         </div>
         <p class="small-note">
-          Click one galaxy, then another.
+          Click galaxies one after another.
         </p>
-        <div class="measurement-readout" id="measurementReadout" style="margin-top:10px;">
-          Add at least two galaxies to measure.
-        </div>
       </div>
 
-      <canvas id="universeCanvas" width="1100" height="660"></canvas>
+      <canvas id="universeCanvas" width="1100" height="800"></canvas>
+
+      <div class="measurement-log" id="measurementLogPanel">
+        <div class="measurement-log-header">
+          <div class="measurement-log-title">Measurement Data</div>
+          <button id="measurementLogToggle" class="measurement-log-toggle">Expand</button>
+        </div>
+        <div class="measurement-log-body" id="measurementLog">
+          <div class="measurement-log-empty">No measurements yet.</div>
+        </div>
+      </div>
     </section>
   </main>
 
@@ -483,25 +606,22 @@
 
     const mode1dBtn = document.getElementById("mode1d");
     const mode2dBtn = document.getElementById("mode2d");
-    const modeHelp = document.getElementById("modeHelp");
 
-    const autoPlaceBtn = document.getElementById("autoPlace");
     const galaxyList = document.getElementById("galaxyList");
 
-    const stretchSlider = document.getElementById("stretchSlider");
-    const stretchLabel = document.getElementById("stretchLabel");
     const stretchBtn = document.getElementById("stretchBtn");
     const undoStretchBtn = document.getElementById("undoStretch");
 
     const measureBtn = document.getElementById("measureBtn");
     const clearMeasureBtn = document.getElementById("clearMeasure");
-    const measurementReadout = document.getElementById("measurementReadout");
+    const measurementReadout = document.getElementById("measurementReadout") || { textContent: "" };
+    const measurementLog = document.getElementById("measurementLog");
+    const measurementLogPanel = document.getElementById("measurementLogPanel");
+    const measurementLogToggle = document.getElementById("measurementLogToggle");
 
-    const resetModeBtn = document.getElementById("resetMode");
-    const resetAllBtn = document.getElementById("resetAll");
+    const resetActivityBtn = document.getElementById("resetActivityBtn");
 
-    const statusBox = document.getElementById("status");
-    const scaleBadge = document.getElementById("scaleBadge");
+    const statusBox = document.getElementById("status") || { textContent: "" };
     const countBadge = document.getElementById("countBadge");
     const moveUniverseBtn = document.getElementById("moveUniverseBtn");
 
@@ -527,21 +647,27 @@
     let moveUniverseMode = false;
     let isDraggingUniverse = false;
     let lastDragPoint = null;
+    let measurementLogExpanded = false;
+    let shouldRecordNextMeasurement = false;
 
     const states = {
       "1d": {
         scale: 1,
+        stretchCount: 0,
         offsetX: 0,
         offsetY: 0,
         history: [],
-        galaxies: []
+        galaxies: [],
+        measurementHistory: []
       },
       "2d": {
         scale: 1,
+        stretchCount: 0,
         offsetX: 0,
         offsetY: 0,
         history: [],
-        galaxies: []
+        galaxies: [],
+        measurementHistory: []
       }
     };
 
@@ -654,7 +780,6 @@
 
     function updateBadges() {
       const state = getState();
-      scaleBadge.textContent = `Universe scale: ${state.scale.toFixed(2)}×`;
       countBadge.textContent = `Galaxies: ${state.galaxies.length}`;
     }
 
@@ -665,26 +790,84 @@
       canvas.classList.toggle("dragging", isDraggingUniverse);
     }
 
+    function updateMeasurementLog() {
+      const rows = getState().measurementHistory;
+
+      if (!rows || rows.length === 0) {
+        measurementLog.innerHTML = '<div class="measurement-log-empty">No measurements yet.</div>';
+        return;
+      }
+
+      const tableRows = rows.map(row => `
+        <tr>
+          <td>${row.stretchLabel}</td>
+          <td>${row.galaxies}</td>
+          <td>${row.distance}</td>
+        </tr>
+      `).join("");
+
+      measurementLog.innerHTML = `
+        <table>
+          <thead>
+            <tr>
+              <th>Stretch</th>
+              <th>Galaxies</th>
+              <th>Distance</th>
+            </tr>
+          </thead>
+          <tbody>${tableRows}</tbody>
+        </table>
+      `;
+    }
+
+    function recordMeasurement(gA, gB, distanceText) {
+      const state = getState();
+      const stretchLabel = `${state.stretchCount}x`;
+
+      // Treat A → B and B → A as the same measurement if the stretch level
+      // and distance are also exactly the same.
+      const pairKey = [gA.name, gB.name].sort().join("|");
+      const duplicateKey = `${stretchLabel}|${pairKey}|${distanceText}`;
+
+      const alreadyRecorded = state.measurementHistory.some(row => row.duplicateKey === duplicateKey);
+
+      if (alreadyRecorded) {
+        updateMeasurementLog();
+        updateMeasurementLogExpansion();
+        return;
+      }
+
+      state.measurementHistory.push({
+        stretchLabel,
+        galaxies: `${gA.name} → ${gB.name}`,
+        distance: distanceText,
+        duplicateKey
+      });
+
+      updateMeasurementLog();
+      updateMeasurementLogExpansion();
+    }
+
+    function updateMeasurementLogExpansion() {
+      measurementLogPanel.classList.toggle("expanded", measurementLogExpanded);
+      measurementLogToggle.textContent = measurementLogExpanded ? "Collapse" : "Expand";
+    }
+
     function updateUI() {
       mode1dBtn.classList.toggle("mode-active", currentMode === "1d");
       mode2dBtn.classList.toggle("mode-active", currentMode === "2d");
-
-      modeHelp.textContent = currentMode === "1d"
-        ? "1D mode: galaxies snap onto the black bungee line."
-        : "2D mode: galaxies attach to locations on the black space circle.";
 
       updateGalaxyList();
       updateMeasureControls();
       updateBadges();
       updateMoveUniverseButton();
+      updateMeasurementLog();
 
       if (getState().galaxies.length < 2) {
         measurementReadout.textContent = "Add at least two galaxies to measure.";
       }
 
       undoStretchBtn.disabled = getState().history.length === 0;
-      autoPlaceBtn.disabled = availableNames().length === 0;
-
       draw();
     }
 
@@ -762,7 +945,7 @@
       ctx.textAlign = "center";
 
       if (currentMode === "1d") {
-        ctx.fillText("1D bungee universe", canvas.width / 2, 72);
+        ctx.fillText("1D string universe", canvas.width / 2, 72);
       } else {
         ctx.fillText("2D space universe", canvas.width / 2, 72);
       }
@@ -794,10 +977,31 @@
       ctx.lineTo(line.x2 + nx * 4, line.y2 + ny * 4);
       ctx.stroke();
 
-      ctx.fillStyle = "#111";
-      ctx.font = "700 14px system-ui";
+      const labelX = (line.x1 + line.x2) / 2;
+      const labelY = (line.y1 + line.y2) / 2 + 48;
+      const labelText = "stretchable space";
+
+      ctx.font = "800 14px system-ui";
       ctx.textAlign = "center";
-      ctx.fillText("stretchable space", (line.x1 + line.x2) / 2, (line.y1 + line.y2) / 2 + 48);
+      ctx.textBaseline = "middle";
+
+      const metrics = ctx.measureText(labelText);
+      const padX = 12;
+      const padY = 8;
+      const boxWidth = metrics.width + padX * 2;
+      const boxHeight = 28;
+
+      ctx.fillStyle = "rgba(225, 232, 245, 0.72)";
+      ctx.strokeStyle = "rgba(90, 110, 145, 0.45)";
+      ctx.lineWidth = 1.5;
+
+      ctx.beginPath();
+      ctx.roundRect(labelX - boxWidth / 2, labelY - boxHeight / 2, boxWidth, boxHeight, 10);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = "rgba(29, 79, 167, 0.88)";
+      ctx.fillText(labelText, labelX, labelY + 1);
       ctx.restore();
     }
 
@@ -824,10 +1028,30 @@
         ctx.stroke();
       }
 
-      ctx.fillStyle = "rgba(255,255,255,0.7)";
-      ctx.font = "700 14px system-ui";
+      const labelX = circle.cx;
+      const labelY = circle.cy + circle.r + 35;
+      const labelText = "stretchable 2D space";
+
+      ctx.font = "800 14px system-ui";
       ctx.textAlign = "center";
-      ctx.fillText("stretchable 2D space", circle.cx, circle.cy + circle.r + 35);
+      ctx.textBaseline = "middle";
+
+      const metrics = ctx.measureText(labelText);
+      const padX = 12;
+      const boxWidth = metrics.width + padX * 2;
+      const boxHeight = 28;
+
+      ctx.fillStyle = "rgba(225, 232, 245, 0.72)";
+      ctx.strokeStyle = "rgba(90, 110, 145, 0.45)";
+      ctx.lineWidth = 1.5;
+
+      ctx.beginPath();
+      ctx.roundRect(labelX - boxWidth / 2, labelY - boxHeight / 2, boxWidth, boxHeight, 10);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = "rgba(29, 79, 167, 0.88)";
+      ctx.fillText(labelText, labelX, labelY + 1);
       ctx.restore();
     }
 
@@ -969,7 +1193,7 @@
 
       if (currentMode === "1d") {
         if (!canPlace1D(point)) {
-          setStatus("Click closer to the black bungee line to attach the galaxy tag.");
+          setStatus("Click closer to the black string to attach the galaxy tag.");
           return false;
         }
 
@@ -1038,16 +1262,31 @@
         b: gB.name
       };
 
-      measuringMode = false;
-      firstMeasuredGalaxy = null;
-      measureBtn.textContent = "Start Measuring";
-
       const dist = distanceBetween(gA, gB);
-      measurementReadout.textContent = `${gA.name} to ${gB.name}: ${formatLightYears(dist)} at ${getState().scale.toFixed(2)}× scale.`;
+      const distanceText = formatLightYears(dist);
+      measurementReadout.textContent = `${gA.name} to ${gB.name}: ${distanceText}. Click once to clear it, then click again to start a new measurement.`;
+      if (shouldRecordNextMeasurement) {
+        recordMeasurement(gA, gB, distanceText);
+      }
+
+      // Keep measuring mode on, but do not immediately start the next measurement.
+      // The next click clears this visible measurement. The click after that starts fresh.
+      firstMeasuredGalaxy = null;
+      measureBtn.textContent = measuringMode ? "Measuring..." : "Start Measuring";
+
       draw();
     }
 
     function handleMeasurementClick(point) {
+      // If a measurement is already visible and no new first galaxy has been chosen,
+      // this click only clears the old measurement. It does not start the next one.
+      if (selectedMeasurement && !firstMeasuredGalaxy) {
+        selectedMeasurement = null;
+        measurementReadout.textContent = "Measurement cleared. Click a galaxy to start a new measurement.";
+        draw();
+        return true;
+      }
+
       const clickedGalaxy = galaxyAtPoint(point);
 
       if (!clickedGalaxy) {
@@ -1062,22 +1301,38 @@
         return true;
       }
 
+      if (clickedGalaxy.name === firstMeasuredGalaxy.name) {
+        measurementReadout.textContent = "That is already the starting galaxy. Click a different galaxy.";
+        return true;
+      }
+
+      shouldRecordNextMeasurement = true;
       finishMeasurement(firstMeasuredGalaxy, clickedGalaxy);
+      shouldRecordNextMeasurement = false;
       return true;
     }
 
     function applyStretch() {
       const state = getState();
-      const stretchFactor = 1 + Number(stretchSlider.value) / 100;
+      const stretchPercent = 40;
+      const stretchFactor = 1 + stretchPercent / 100;
+
+      // Stretching clears the visible measuring line/highlight, but it does not
+      // add anything to the measurement data table.
+      selectedMeasurement = null;
+      firstMeasuredGalaxy = null;
+      shouldRecordNextMeasurement = false;
 
       state.history.push({
         scale: state.scale,
+        stretchCount: state.stretchCount,
         offsetX: state.offsetX,
         offsetY: state.offsetY,
         galaxies: JSON.parse(JSON.stringify(state.galaxies))
       });
 
       state.scale *= stretchFactor;
+      state.stretchCount += 1;
 
       if (currentMode === "2d") {
         state.galaxies.forEach(g => {
@@ -1090,14 +1345,10 @@
         });
       }
 
-      setStatus(`Space stretched by ${stretchSlider.value}%. Distances between galaxies are now larger.`);
+      setStatus(`Space stretched by ${stretchPercent}%. Distances between galaxies are now larger.`);
       updateUI();
 
-      if (selectedMeasurement) {
-        const gA = findGalaxy(selectedMeasurement.a);
-        const gB = findGalaxy(selectedMeasurement.b);
-        if (gA && gB) finishMeasurement(gA, gB);
-      }
+      draw();
     }
 
     function undoStretch() {
@@ -1106,80 +1357,31 @@
       if (!last) return;
 
       state.scale = last.scale;
+      state.stretchCount = last.stretchCount ?? state.stretchCount;
       state.offsetX = last.offsetX ?? state.offsetX;
       state.offsetY = last.offsetY ?? state.offsetY;
       state.galaxies = last.galaxies;
       setStatus("Last stretch undone.");
       updateUI();
 
-      if (selectedMeasurement) {
-        const gA = findGalaxy(selectedMeasurement.a);
-        const gB = findGalaxy(selectedMeasurement.b);
-        if (gA && gB) finishMeasurement(gA, gB);
-      }
+      draw();
     }
 
-    function autoPlaceSome() {
-      const available = availableNames();
-      const namesToAdd = available.slice(0, Math.min(5, available.length));
-      const state = getState();
-
-      if (currentMode === "1d") {
-        const existingFractions = state.galaxies.map(g => g.fraction);
-        namesToAdd.forEach((name, i) => {
-          const base = (i + 1) / (namesToAdd.length + 1);
-          let fraction = clamp(base + (Math.random() - 0.5) * 0.09, 0.05, 0.95);
-
-          while (existingFractions.some(f => Math.abs(f - fraction) < 0.06)) {
-            fraction = clamp(fraction + 0.08, 0.05, 0.95);
-          }
-
-          existingFractions.push(fraction);
-          state.galaxies.push({ name, fraction });
-        });
-      } else {
-        namesToAdd.forEach((name, i) => {
-          const angle = (Math.PI * 2 * i / namesToAdd.length) + Math.random() * 0.55;
-          const radius = 0.22 + Math.random() * 0.62;
-          state.galaxies.push({
-            name,
-            nx: Math.cos(angle) * radius,
-            ny: Math.sin(angle) * radius
-          });
-        });
-      }
-
-      selectedMeasurement = null;
-      setStatus(`${namesToAdd.length} galaxy tags were placed automatically.`);
-      updateUI();
-    }
-
-    function resetMode() {
-      states[currentMode] = {
-        scale: 1,
-        offsetX: 0,
-        offsetY: 0,
-        history: [],
-        galaxies: []
-      };
+    function resetActivity() {
+      states["1d"] = { scale: 1, stretchCount: 0, offsetX: 0, offsetY: 0, history: [], galaxies: [], measurementHistory: [] };
+      states["2d"] = { scale: 1, stretchCount: 0, offsetX: 0, offsetY: 0, history: [], galaxies: [], measurementHistory: [] };
       selectedMeasurement = null;
       measuringMode = false;
       firstMeasuredGalaxy = null;
+      shouldRecordNextMeasurement = false;
+      moveUniverseMode = false;
       isDraggingUniverse = false;
       lastDragPoint = null;
-      setStatus(`${currentMode === "1d" ? "1D bungee" : "2D space"} mode reset.`);
-      updateUI();
-    }
-
-    function resetAll() {
-      states["1d"] = { scale: 1, offsetX: 0, offsetY: 0, history: [], galaxies: [] };
-      states["2d"] = { scale: 1, offsetX: 0, offsetY: 0, history: [], galaxies: [] };
-      selectedMeasurement = null;
-      measuringMode = false;
-      firstMeasuredGalaxy = null;
-      isDraggingUniverse = false;
-      lastDragPoint = null;
-      setStatus("Both universe modes were reset.");
+      currentMode = "1d";
+      measureBtn.textContent = "Start Measuring";
+      measurementReadout.textContent = "Add at least two galaxies to measure.";
+      measurementLogExpanded = false;
+      setStatus("The activity was reset.");
       updateUI();
     }
 
@@ -1188,12 +1390,13 @@
       selectedMeasurement = null;
       measuringMode = false;
       firstMeasuredGalaxy = null;
+      shouldRecordNextMeasurement = false;
       isDraggingUniverse = false;
       lastDragPoint = null;
       measureBtn.textContent = "Start Measuring";
       setStatus(
         mode === "1d"
-          ? "1D bungee mode. Click the black line to add a random galaxy."
+          ? "1D string mode. Click the black line to add a random galaxy."
           : "2D space mode. Click inside the black circle to add a random galaxy."
       );
       updateUI();
@@ -1217,6 +1420,7 @@
       moveUniverseMode = !moveUniverseMode;
       measuringMode = false;
       firstMeasuredGalaxy = null;
+      shouldRecordNextMeasurement = false;
       measureBtn.textContent = "Start Measuring";
 
       if (moveUniverseMode) {
@@ -1280,17 +1484,19 @@
     mode1dBtn.addEventListener("click", () => switchMode("1d"));
     mode2dBtn.addEventListener("click", () => switchMode("2d"));
 
-    stretchSlider.addEventListener("input", () => {
-      stretchLabel.textContent = `${stretchSlider.value}%`;
-    });
-
     stretchBtn.addEventListener("click", applyStretch);
     undoStretchBtn.addEventListener("click", undoStretch);
-    autoPlaceBtn.addEventListener("click", autoPlaceSome);
 
     measureBtn.addEventListener("click", () => {
       if (getState().galaxies.length < 2) {
         measurementReadout.textContent = "Add at least two galaxies to measure.";
+        return;
+      }
+
+      if (measuringMode) {
+        measurementReadout.textContent = firstMeasuredGalaxy
+          ? `First galaxy: ${firstMeasuredGalaxy.name}. Now click a second galaxy.`
+          : "Click the first galaxy.";
         return;
       }
 
@@ -1299,7 +1505,7 @@
       selectedMeasurement = null;
       measureBtn.textContent = "Measuring...";
       measurementReadout.textContent = "Click the first galaxy.";
-      setStatus("Measurement mode: click one galaxy, then another galaxy.");
+      setStatus("Measurement mode: click two galaxies to measure. After a measurement, click once to clear it before starting another.");
       draw();
     });
 
@@ -1310,12 +1516,16 @@
       measureBtn.textContent = "Start Measuring";
       measurementReadout.textContent = getState().galaxies.length < 2
         ? "Add at least two galaxies to measure."
-        : "Measurement cleared.";
+        : "Measuring stopped.";
       draw();
     });
 
-    resetModeBtn.addEventListener("click", resetMode);
-    resetAllBtn.addEventListener("click", resetAll);
+    measurementLogToggle.addEventListener("click", () => {
+      measurementLogExpanded = !measurementLogExpanded;
+      updateMeasurementLogExpansion();
+    });
+
+    resetActivityBtn.addEventListener("click", resetActivity);
 
     window.addEventListener("resize", () => {
       draw();
