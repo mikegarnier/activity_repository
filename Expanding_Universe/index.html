@@ -367,6 +367,33 @@
       box-shadow: 0 8px 18px rgba(0,0,0,0.12);
     }
 
+    .cosmic-timer {
+      position: absolute;
+      z-index: 7;
+      left: 12px;
+      bottom: 124px;
+      min-width: 245px;
+      padding: 9px 12px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.92);
+      border: 1px solid rgba(23,32,51,0.14);
+      box-shadow: 0 8px 18px rgba(0,0,0,0.12);
+      color: #172033;
+      font-weight: 900;
+      line-height: 1.22;
+    }
+
+    .cosmic-timer .timer-main {
+      font-size: 0.98rem;
+    }
+
+    .cosmic-timer .timer-sub {
+      margin-top: 3px;
+      font-size: 0.76rem;
+      color: #5d6a7c;
+      font-weight: 800;
+    }
+
     .move-universe-toggle.active {
       background: var(--ink);
       color: white;
@@ -550,11 +577,10 @@
       <div class="control-block">
         <h2>Stretch Space</h2>
         <div class="row" style="margin-top:8px;">
-          <button id="stretchBtn" class="primary">Add Stretch</button>
-          <button id="undoStretch">Undo Stretch</button>
+          <button id="stretchBtn" class="primary" disabled>Start Stretch</button>
         </div>
         <p class="stretch-note">
-          Add as much stretch as you want
+          Add at least two galaxies before starting stretch.
         </p>
       </div>
 
@@ -574,6 +600,11 @@
 
       <button id="resetActivityBtn" class="reset-activity-btn">Reset</button>
       <button id="moveUniverseBtn" class="move-universe-toggle">Move Universe: Off</button>
+
+      <div class="cosmic-timer" id="cosmicTimer">
+        <div class="timer-main" id="cosmicTimerMain">Time: 0.0 billion years</div>
+        <div class="timer-sub">H₀ ≈ 70 km/s/Mpc</div>
+      </div>
 
       <div class="measure-toolbar">
         <h2>Measure Distance</h2>
@@ -610,7 +641,6 @@
     const galaxyList = document.getElementById("galaxyList");
 
     const stretchBtn = document.getElementById("stretchBtn");
-    const undoStretchBtn = document.getElementById("undoStretch");
 
     const measureBtn = document.getElementById("measureBtn");
     const clearMeasureBtn = document.getElementById("clearMeasure");
@@ -624,6 +654,7 @@
     const statusBox = document.getElementById("status") || { textContent: "" };
     const countBadge = document.getElementById("countBadge");
     const moveUniverseBtn = document.getElementById("moveUniverseBtn");
+    const cosmicTimerMain = document.getElementById("cosmicTimerMain");
 
     const galaxyNames = [
       "Andromeda",
@@ -649,11 +680,21 @@
     let lastDragPoint = null;
     let measurementLogExpanded = false;
     let shouldRecordNextMeasurement = false;
+    let stretchRunning = false;
+    let stretchAnimationId = null;
+    let lastStretchFrameTime = null;
+
+    // Hubble constant approximation:
+    // H0 = 70 km/s/Mpc ≈ 0.0716 per billion years.
+    // The simulation uses accelerated classroom time so the change is visible.
+    const HUBBLE_RATE_PER_BILLION_YEARS = 0.0716;
+    const SIM_BILLION_YEARS_PER_REAL_SECOND = 0.825;
 
     const states = {
       "1d": {
         scale: 1,
         stretchCount: 0,
+        cosmicTime: 0,
         offsetX: 0,
         offsetY: 0,
         history: [],
@@ -663,6 +704,7 @@
       "2d": {
         scale: 1,
         stretchCount: 0,
+        cosmicTime: 0,
         offsetX: 0,
         offsetY: 0,
         history: [],
@@ -707,7 +749,7 @@
       return {
         centerX: canvas.width / 2 + state.offsetX,
         centerY: canvas.height / 2 + 20 + state.offsetY,
-        radius: 115
+        radius: 100
       };
     }
 
@@ -781,6 +823,35 @@
     function updateBadges() {
       const state = getState();
       countBadge.textContent = `Galaxies: ${state.galaxies.length}`;
+    }
+
+    function updateCosmicTimer() {
+      cosmicTimerMain.textContent = `Time: ${getState().cosmicTime.toFixed(1)} billion years`;
+    }
+
+    function updateStretchButtons() {
+      const hasEnoughGalaxies = getState().galaxies.length >= 2;
+
+      if (stretchRunning) {
+        stretchBtn.textContent = "Stop Stretch";
+        stretchBtn.disabled = false;
+        return;
+      }
+
+      stretchBtn.textContent = "Start Stretch";
+      stretchBtn.disabled = !hasEnoughGalaxies;
+    }
+
+    function stopStretchAnimation() {
+      stretchRunning = false;
+      lastStretchFrameTime = null;
+
+      if (stretchAnimationId) {
+        cancelAnimationFrame(stretchAnimationId);
+        stretchAnimationId = null;
+      }
+
+      updateStretchButtons();
     }
 
     function updateMoveUniverseButton() {
@@ -867,7 +938,6 @@
         measurementReadout.textContent = "Add at least two galaxies to measure.";
       }
 
-      undoStretchBtn.disabled = getState().history.length === 0;
       draw();
     }
 
@@ -1178,7 +1248,7 @@
       const circle = current2DCircle();
       const dx = point.x - circle.cx;
       const dy = point.y - circle.cy;
-      return Math.sqrt(dx * dx + dy * dy) <= circle.r - 20;
+      return Math.sqrt(dx * dx + dy * dy) <= circle.r;
     }
 
     function addGalaxyAt(name, point) {
@@ -1227,6 +1297,7 @@
       selectedMeasurement = null;
       setStatus(`${name} was added. Add more galaxies, stretch space, or measure a distance.`);
       updateUI();
+      updateStretchButtons();
       return true;
     }
 
@@ -1312,10 +1383,19 @@
       return true;
     }
 
-    function applyStretch() {
+    function startStretchAnimation() {
+      if (stretchRunning) return;
+
+      if (getState().galaxies.length < 2) {
+        stretchRunning = false;
+        stretchAnimationId = null;
+        lastStretchFrameTime = null;
+        setStatus("Add at least two galaxies before starting stretch.");
+        updateStretchButtons();
+        return;
+      }
+
       const state = getState();
-      const stretchPercent = 40;
-      const stretchFactor = 1 + stretchPercent / 100;
 
       // Stretching clears the visible measuring line/highlight, but it does not
       // add anything to the measurement data table.
@@ -1326,50 +1406,55 @@
       state.history.push({
         scale: state.scale,
         stretchCount: state.stretchCount,
+        cosmicTime: state.cosmicTime,
         offsetX: state.offsetX,
         offsetY: state.offsetY,
         galaxies: JSON.parse(JSON.stringify(state.galaxies))
       });
 
-      state.scale *= stretchFactor;
       state.stretchCount += 1;
+      stretchRunning = true;
+      lastStretchFrameTime = null;
+      setStatus("Space is stretching. Distances between galaxies are increasing over cosmic time.");
+      updateStretchButtons();
+      draw();
 
-      if (currentMode === "2d") {
-        state.galaxies.forEach(g => {
-          const newDistance = Math.hypot(g.nx, g.ny);
-          if (newDistance > 0.97) {
-            const factor = 0.97 / newDistance;
-            g.nx *= factor;
-            g.ny *= factor;
-          }
-        });
+      function animateStretch(timestamp) {
+        if (!stretchRunning) return;
+
+        if (lastStretchFrameTime === null) {
+          lastStretchFrameTime = timestamp;
+        }
+
+        const realDeltaSeconds = Math.min((timestamp - lastStretchFrameTime) / 1000, 0.1);
+        lastStretchFrameTime = timestamp;
+
+        const cosmicDelta = realDeltaSeconds * SIM_BILLION_YEARS_PER_REAL_SECOND;
+        const growthFactor = Math.exp(HUBBLE_RATE_PER_BILLION_YEARS * cosmicDelta);
+
+        const activeState = getState();
+        activeState.cosmicTime += cosmicDelta;
+        activeState.scale *= growthFactor;
+
+        updateCosmicTimer();
+        draw();
+
+        stretchAnimationId = requestAnimationFrame(animateStretch);
       }
 
-      setStatus(`Space stretched by ${stretchPercent}%. Distances between galaxies are now larger.`);
-      updateUI();
-
-      draw();
+      stretchAnimationId = requestAnimationFrame(animateStretch);
     }
 
-    function undoStretch() {
-      const state = getState();
-      const last = state.history.pop();
-      if (!last) return;
-
-      state.scale = last.scale;
-      state.stretchCount = last.stretchCount ?? state.stretchCount;
-      state.offsetX = last.offsetX ?? state.offsetX;
-      state.offsetY = last.offsetY ?? state.offsetY;
-      state.galaxies = last.galaxies;
-      setStatus("Last stretch undone.");
-      updateUI();
-
+    function stopStretch() {
+      stopStretchAnimation();
+      setStatus("Stretching stopped.");
       draw();
     }
 
     function resetActivity() {
-      states["1d"] = { scale: 1, stretchCount: 0, offsetX: 0, offsetY: 0, history: [], galaxies: [], measurementHistory: [] };
-      states["2d"] = { scale: 1, stretchCount: 0, offsetX: 0, offsetY: 0, history: [], galaxies: [], measurementHistory: [] };
+      stopStretchAnimation();
+      states["1d"] = { scale: 1, stretchCount: 0, cosmicTime: 0, offsetX: 0, offsetY: 0, history: [], galaxies: [], measurementHistory: [] };
+      states["2d"] = { scale: 1, stretchCount: 0, cosmicTime: 0, offsetX: 0, offsetY: 0, history: [], galaxies: [], measurementHistory: [] };
       selectedMeasurement = null;
       measuringMode = false;
       firstMeasuredGalaxy = null;
@@ -1381,11 +1466,13 @@
       measureBtn.textContent = "Start Measuring";
       measurementReadout.textContent = "Add at least two galaxies to measure.";
       measurementLogExpanded = false;
+      updateCosmicTimer();
       setStatus("The activity was reset.");
       updateUI();
     }
 
     function switchMode(mode) {
+      stopStretchAnimation();
       currentMode = mode;
       selectedMeasurement = null;
       measuringMode = false;
@@ -1414,6 +1501,7 @@
 
       const name = randomAvailableGalaxyName();
       addGalaxyAt(name, point);
+      updateStretchButtons();
     });
 
     moveUniverseBtn.addEventListener("click", () => {
@@ -1484,8 +1572,13 @@
     mode1dBtn.addEventListener("click", () => switchMode("1d"));
     mode2dBtn.addEventListener("click", () => switchMode("2d"));
 
-    stretchBtn.addEventListener("click", applyStretch);
-    undoStretchBtn.addEventListener("click", undoStretch);
+    stretchBtn.addEventListener("click", () => {
+      if (stretchRunning) {
+        stopStretch();
+      } else {
+        startStretchAnimation();
+      }
+    });
 
     measureBtn.addEventListener("click", () => {
       if (getState().galaxies.length < 2) {
