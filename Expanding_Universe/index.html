@@ -435,15 +435,6 @@
       font-size: 0.92rem;
     }
 
-    .measure-toolbar button.stop-measuring-btn {
-      background: #e5e7eb;
-      color: #374151;
-    }
-
-    .measure-toolbar button.stop-measuring-btn:hover {
-      background: #d1d5db;
-    }
-
     @media (max-width: 900px) {
       .measure-toolbar {
         position: static;
@@ -549,6 +540,116 @@
         height: 700px;
       }
     }
+
+    .tutorial-start-btn {
+      margin-top: 10px;
+      width: 100%;
+      background: #ede9fe;
+      color: #5b21b6;
+      border: 1px solid rgba(91,33,182,0.16);
+    }
+
+    .tutorial-start-btn.active {
+      background: #5b21b6;
+      color: white;
+    }
+
+    .tutorial-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      pointer-events: none;
+      display: none;
+    }
+
+    .tutorial-overlay.active {
+      display: block;
+    }
+
+    .tutorial-dimmer {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.62);
+      pointer-events: none;
+    }
+
+    .tutorial-highlight {
+      position: fixed;
+      z-index: 1002;
+      border: 4px solid #facc15;
+      border-radius: 16px;
+      box-shadow:
+        0 0 0 6px rgba(250,204,21,0.22),
+        0 0 24px rgba(250,204,21,0.75);
+      pointer-events: none;
+      transition: left 0.18s ease, top 0.18s ease, width 0.18s ease, height 0.18s ease;
+    }
+
+    .tutorial-card {
+      position: fixed;
+      z-index: 1003;
+      width: min(360px, calc(100vw - 28px));
+      padding: 16px;
+      border-radius: 16px;
+      background: white;
+      color: var(--ink);
+      box-shadow: 0 18px 40px rgba(0,0,0,0.28);
+      pointer-events: auto;
+    }
+
+    .tutorial-card h2 {
+      margin: 0 0 8px;
+      font-size: 1.05rem;
+    }
+
+    .tutorial-card p {
+      margin: 0;
+      line-height: 1.35;
+      font-weight: 700;
+    }
+
+    .tutorial-card-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .tutorial-card-actions button {
+      flex: 1;
+    }
+
+    .tutorial-card .tutorial-exit {
+      background: #e5e7eb;
+      color: #374151;
+    }
+
+    .tutorial-card .tutorial-next {
+      background: var(--accent);
+      color: white;
+    }
+
+    .tutorial-step-count {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 0.8rem;
+      font-weight: 800;
+    }
+
+    .tutorial-clickable {
+      position: relative;
+      z-index: 1004 !important;
+    }
+
+    @media (max-width: 700px) {
+      .tutorial-card {
+        left: 14px !important;
+        right: 14px !important;
+        bottom: 14px !important;
+        top: auto !important;
+        width: auto;
+      }
+    }
+
   </style>
 </head>
 <body>
@@ -564,6 +665,11 @@
           <button id="mode1d" class="mode-active">1D String</button>
           <button id="mode2d">2D Space</button>
         </div>
+      </div>
+
+
+      <div class="control-block">
+        <button id="tutorialBtn" class="tutorial-start-btn">Start Tutorial</button>
       </div>
 
       <div class="control-block">
@@ -609,11 +715,10 @@
       <div class="measure-toolbar">
         <h2>Measure Distance</h2>
         <div class="row">
-          <button id="measureBtn" class="primary">Start Measuring</button>
-          <button id="clearMeasure" class="stop-measuring-btn">Stop Measuring</button>
+          <button id="measureBtn" class="primary">Measure Distance</button>
         </div>
         <p class="small-note">
-          Click galaxies one after another.
+          Click Measure Distance, then click two galaxies.
         </p>
       </div>
 
@@ -631,6 +736,21 @@
     </section>
   </main>
 
+    <div class="tutorial-overlay" id="tutorialOverlay" aria-hidden="true">
+      <div class="tutorial-dimmer"></div>
+      <div class="tutorial-highlight" id="tutorialHighlight"></div>
+      <div class="tutorial-card" id="tutorialCard">
+        <h2 id="tutorialTitle">Tutorial</h2>
+        <p id="tutorialText"></p>
+        <div class="tutorial-step-count" id="tutorialStepCount"></div>
+        <div class="tutorial-card-actions">
+          <button id="tutorialExitBtn" class="tutorial-exit">Exit Tutorial</button>
+          <button id="tutorialNextBtn" class="tutorial-next">Next</button>
+        </div>
+      </div>
+    </div>
+
+
   <script>
     const canvas = document.getElementById("universeCanvas");
     const ctx = canvas.getContext("2d");
@@ -643,7 +763,6 @@
     const stretchBtn = document.getElementById("stretchBtn");
 
     const measureBtn = document.getElementById("measureBtn");
-    const clearMeasureBtn = document.getElementById("clearMeasure");
     const measurementReadout = document.getElementById("measurementReadout") || { textContent: "" };
     const measurementLog = document.getElementById("measurementLog");
     const measurementLogPanel = document.getElementById("measurementLogPanel");
@@ -655,6 +774,17 @@
     const countBadge = document.getElementById("countBadge");
     const moveUniverseBtn = document.getElementById("moveUniverseBtn");
     const cosmicTimerMain = document.getElementById("cosmicTimerMain");
+
+    const tutorialBtn = document.getElementById("tutorialBtn");
+    const tutorialOverlay = document.getElementById("tutorialOverlay");
+    const tutorialHighlight = document.getElementById("tutorialHighlight");
+    const tutorialCard = document.getElementById("tutorialCard");
+    const tutorialTitle = document.getElementById("tutorialTitle");
+    const tutorialText = document.getElementById("tutorialText");
+    const tutorialStepCount = document.getElementById("tutorialStepCount");
+    const tutorialExitBtn = document.getElementById("tutorialExitBtn");
+    const tutorialNextBtn = document.getElementById("tutorialNextBtn");
+
 
     const galaxyNames = [
       "Andromeda",
@@ -684,6 +814,73 @@
     let stretchAnimationId = null;
     let lastStretchFrameTime = null;
 
+    let tutorialActive = false;
+    let tutorialStep = 0;
+
+    const tutorialSteps = [
+      {
+        target: "#mode1d",
+        title: "Step 1: Choose a universe",
+        text: "Click 1D String to begin.",
+        event: "mode1d"
+      },
+      {
+        target: "#universeCanvas",
+        title: "Step 2: Add a galaxy",
+        text: "Click directly on the black string to place your first galaxy.",
+        event: "galaxy-added"
+      },
+      {
+        target: "#universeCanvas",
+        title: "Step 3: Add another galaxy",
+        text: "Click a different spot on the black string to place a second galaxy.",
+        event: "galaxy-added"
+      },
+      {
+        target: "#measureBtn",
+        title: "Step 4: Measure distance",
+        text: "Click Measure Distance.",
+        event: "measure-start"
+      },
+      {
+        target: "#universeCanvas",
+        title: "Step 5: Choose the first galaxy",
+        text: "Click one of your galaxies.",
+        event: "first-galaxy"
+      },
+      {
+        target: "#universeCanvas",
+        title: "Step 6: Choose the second galaxy",
+        text: "Now click a different galaxy to measure the distance between them.",
+        event: "measurement-finished"
+      },
+      {
+        target: "#stretchBtn",
+        title: "Step 7: Stretch space",
+        text: "Click Start Stretch and watch the galaxies move apart.",
+        event: "stretch-start"
+      },
+      {
+        target: "#stretchBtn",
+        title: "Step 8: Stop stretching",
+        text: "After you have watched the expansion for a moment, click Stop Stretch.",
+        event: "stretch-stop"
+      },
+      {
+        target: "#measureBtn",
+        title: "Step 9: Measure again",
+        text: "Click Measure Distance again.",
+        event: "measure-start"
+      },
+      {
+        target: "#universeCanvas",
+        title: "Step 10: Compare the distance",
+        text: "Measure the distance between two galaxies again and compare it with your earlier measurement.",
+        event: "measurement-finished"
+      }
+    ];
+
+
     // Hubble constant approximation:
     // H0 = 70 km/s/Mpc ≈ 0.0716 per billion years.
     // The simulation uses accelerated classroom time so the change is visible.
@@ -712,6 +909,119 @@
         measurementHistory: []
       }
     };
+
+
+    function startTutorial() {
+      resetActivity();
+      tutorialActive = true;
+      tutorialStep = 0;
+      tutorialBtn.classList.add("active");
+      tutorialBtn.textContent = "Tutorial On";
+      tutorialOverlay.classList.add("active");
+      tutorialOverlay.setAttribute("aria-hidden", "false");
+      showTutorialStep();
+    }
+
+    function endTutorial(completed = false) {
+      tutorialActive = false;
+      tutorialOverlay.classList.remove("active");
+      tutorialOverlay.setAttribute("aria-hidden", "true");
+      tutorialBtn.classList.remove("active");
+      tutorialBtn.textContent = "Start Tutorial";
+      document.querySelectorAll(".tutorial-clickable").forEach(el => el.classList.remove("tutorial-clickable"));
+
+      if (completed) {
+        setStatus("Tutorial complete. Explore the simulation on your own.");
+      }
+    }
+
+    function showTutorialStep() {
+      if (!tutorialActive) return;
+
+      if (tutorialStep >= tutorialSteps.length) {
+        endTutorial(true);
+        return;
+      }
+
+      const step = tutorialSteps[tutorialStep];
+      const target = document.querySelector(step.target);
+      if (!target) {
+        tutorialStep += 1;
+        showTutorialStep();
+        return;
+      }
+
+      document.querySelectorAll(".tutorial-clickable").forEach(el => el.classList.remove("tutorial-clickable"));
+      target.classList.add("tutorial-clickable");
+
+      tutorialTitle.textContent = step.title;
+      tutorialText.textContent = step.text;
+      tutorialStepCount.textContent = `Step ${tutorialStep + 1} of ${tutorialSteps.length}`;
+
+      const rect = target.getBoundingClientRect();
+      const pad = 8;
+
+      tutorialHighlight.style.left = `${Math.max(4, rect.left - pad)}px`;
+      tutorialHighlight.style.top = `${Math.max(4, rect.top - pad)}px`;
+      tutorialHighlight.style.width = `${Math.min(window.innerWidth - 8, rect.width + pad * 2)}px`;
+      tutorialHighlight.style.height = `${Math.min(window.innerHeight - 8, rect.height + pad * 2)}px`;
+
+      positionTutorialCard(rect);
+
+      tutorialNextBtn.style.display = "none";
+
+      target.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+        inline: "center"
+      });
+
+      setTimeout(() => {
+        if (!tutorialActive) return;
+        const refreshedRect = target.getBoundingClientRect();
+        tutorialHighlight.style.left = `${Math.max(4, refreshedRect.left - pad)}px`;
+        tutorialHighlight.style.top = `${Math.max(4, refreshedRect.top - pad)}px`;
+        tutorialHighlight.style.width = `${Math.min(window.innerWidth - 8, refreshedRect.width + pad * 2)}px`;
+        tutorialHighlight.style.height = `${Math.min(window.innerHeight - 8, refreshedRect.height + pad * 2)}px`;
+        positionTutorialCard(refreshedRect);
+      }, 250);
+    }
+
+    function positionTutorialCard(targetRect) {
+      const margin = 14;
+      const cardWidth = Math.min(360, window.innerWidth - 28);
+      const estimatedHeight = 190;
+
+      let left = targetRect.right + margin;
+      let top = targetRect.top;
+
+      if (left + cardWidth > window.innerWidth - margin) {
+        left = targetRect.left - cardWidth - margin;
+      }
+
+      if (left < margin) {
+        left = Math.min(window.innerWidth - cardWidth - margin, Math.max(margin, targetRect.left));
+        top = targetRect.bottom + margin;
+      }
+
+      if (top + estimatedHeight > window.innerHeight - margin) {
+        top = Math.max(margin, window.innerHeight - estimatedHeight - margin);
+      }
+
+      tutorialCard.style.left = `${left}px`;
+      tutorialCard.style.top = `${top}px`;
+      tutorialCard.style.right = "auto";
+      tutorialCard.style.bottom = "auto";
+    }
+
+    function tutorialAdvance(eventName) {
+      if (!tutorialActive) return;
+      const step = tutorialSteps[tutorialStep];
+      if (!step || step.event !== eventName) return;
+
+      tutorialStep += 1;
+      setTimeout(showTutorialStep, 120);
+    }
 
     function getState() {
       return states[currentMode];
@@ -816,8 +1126,9 @@
       if (galaxies.length < 2) {
         measuringMode = false;
         firstMeasuredGalaxy = null;
-        measureBtn.textContent = "Start Measuring";
       }
+
+      measureBtn.textContent = measuringMode ? "Select Two Galaxies..." : "Measure Distance";
     }
 
     function updateBadges() {
@@ -1298,6 +1609,7 @@
       setStatus(`${name} was added. Add more galaxies, stretch space, or measure a distance.`);
       updateUI();
       updateStretchButtons();
+      tutorialAdvance("galaxy-added");
       return true;
     }
 
@@ -1335,29 +1647,21 @@
 
       const dist = distanceBetween(gA, gB);
       const distanceText = formatLightYears(dist);
-      measurementReadout.textContent = `${gA.name} to ${gB.name}: ${distanceText}. Click once to clear it, then click again to start a new measurement.`;
+      measurementReadout.textContent = `${gA.name} to ${gB.name}: ${distanceText}. Click Measure Distance to take another measurement.`;
       if (shouldRecordNextMeasurement) {
         recordMeasurement(gA, gB, distanceText);
       }
 
-      // Keep measuring mode on, but do not immediately start the next measurement.
-      // The next click clears this visible measurement. The click after that starts fresh.
+      // A measurement is a one-time action. After the second galaxy is chosen,
+      // automatically leave measuring mode.
       firstMeasuredGalaxy = null;
-      measureBtn.textContent = measuringMode ? "Measuring..." : "Start Measuring";
+      measuringMode = false;
+      measureBtn.textContent = "Measure Distance";
 
       draw();
     }
 
     function handleMeasurementClick(point) {
-      // If a measurement is already visible and no new first galaxy has been chosen,
-      // this click only clears the old measurement. It does not start the next one.
-      if (selectedMeasurement && !firstMeasuredGalaxy) {
-        selectedMeasurement = null;
-        measurementReadout.textContent = "Measurement cleared. Click a galaxy to start a new measurement.";
-        draw();
-        return true;
-      }
-
       const clickedGalaxy = galaxyAtPoint(point);
 
       if (!clickedGalaxy) {
@@ -1369,6 +1673,7 @@
         firstMeasuredGalaxy = clickedGalaxy;
         measurementReadout.textContent = `First galaxy: ${clickedGalaxy.name}. Now click a second galaxy.`;
         draw();
+        tutorialAdvance("first-galaxy");
         return true;
       }
 
@@ -1380,6 +1685,7 @@
       shouldRecordNextMeasurement = true;
       finishMeasurement(firstMeasuredGalaxy, clickedGalaxy);
       shouldRecordNextMeasurement = false;
+      tutorialAdvance("measurement-finished");
       return true;
     }
 
@@ -1418,6 +1724,7 @@
       setStatus("Space is stretching. Distances between galaxies are increasing over cosmic time.");
       updateStretchButtons();
       draw();
+      tutorialAdvance("stretch-start");
 
       function animateStretch(timestamp) {
         if (!stretchRunning) return;
@@ -1449,6 +1756,7 @@
       stopStretchAnimation();
       setStatus("Stretching stopped.");
       draw();
+      tutorialAdvance("stretch-stop");
     }
 
     function resetActivity() {
@@ -1463,7 +1771,7 @@
       isDraggingUniverse = false;
       lastDragPoint = null;
       currentMode = "1d";
-      measureBtn.textContent = "Start Measuring";
+      measureBtn.textContent = "Measure Distance";
       measurementReadout.textContent = "Add at least two galaxies to measure.";
       measurementLogExpanded = false;
       updateCosmicTimer();
@@ -1480,13 +1788,14 @@
       shouldRecordNextMeasurement = false;
       isDraggingUniverse = false;
       lastDragPoint = null;
-      measureBtn.textContent = "Start Measuring";
+      measureBtn.textContent = "Measure Distance";
       setStatus(
         mode === "1d"
           ? "1D string mode. Click the black line to add a random galaxy."
           : "2D space mode. Click inside the black circle to add a random galaxy."
       );
       updateUI();
+      if (mode === "1d") tutorialAdvance("mode1d");
     }
 
     canvas.addEventListener("click", event => {
@@ -1509,7 +1818,7 @@
       measuringMode = false;
       firstMeasuredGalaxy = null;
       shouldRecordNextMeasurement = false;
-      measureBtn.textContent = "Start Measuring";
+      measureBtn.textContent = "Measure Distance";
 
       if (moveUniverseMode) {
         setStatus("Move Universe mode: click and drag the universe around the screen.");
@@ -1517,7 +1826,7 @@
           measurementReadout.textContent = "Move mode is on. Turn it off to add or measure galaxies.";
         }
       } else {
-        setStatus("Move Universe mode off. Click the universe to add galaxies, or start measuring.");
+        setStatus("Move Universe mode off. Click the universe to add galaxies, or use Measure Distance.");
       }
 
       updateMoveUniverseButton();
@@ -1586,31 +1895,14 @@
         return;
       }
 
-      if (measuringMode) {
-        measurementReadout.textContent = firstMeasuredGalaxy
-          ? `First galaxy: ${firstMeasuredGalaxy.name}. Now click a second galaxy.`
-          : "Click the first galaxy.";
-        return;
-      }
-
       measuringMode = true;
       firstMeasuredGalaxy = null;
       selectedMeasurement = null;
-      measureBtn.textContent = "Measuring...";
+      measureBtn.textContent = "Select Two Galaxies...";
       measurementReadout.textContent = "Click the first galaxy.";
-      setStatus("Measurement mode: click two galaxies to measure. After a measurement, click once to clear it before starting another.");
+      setStatus("Measurement: click two galaxies to measure the distance between them.");
       draw();
-    });
-
-    clearMeasureBtn.addEventListener("click", () => {
-      selectedMeasurement = null;
-      measuringMode = false;
-      firstMeasuredGalaxy = null;
-      measureBtn.textContent = "Start Measuring";
-      measurementReadout.textContent = getState().galaxies.length < 2
-        ? "Add at least two galaxies to measure."
-        : "Measuring stopped.";
-      draw();
+      tutorialAdvance("measure-start");
     });
 
     measurementLogToggle.addEventListener("click", () => {
@@ -1618,10 +1910,27 @@
       updateMeasurementLogExpansion();
     });
 
+
+    tutorialBtn.addEventListener("click", () => {
+      if (tutorialActive) {
+        endTutorial(false);
+      } else {
+        startTutorial();
+      }
+    });
+
+    tutorialExitBtn.addEventListener("click", () => endTutorial(false));
+
+    tutorialNextBtn.addEventListener("click", () => {
+      tutorialStep += 1;
+      showTutorialStep();
+    });
+
     resetActivityBtn.addEventListener("click", resetActivity);
 
     window.addEventListener("resize", () => {
       draw();
+      if (tutorialActive) showTutorialStep();
     });
 
     updateUI();
