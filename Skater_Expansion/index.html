@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Skater Expansion Model</title>
+<style>
+  :root{
+    --sky1:#dff4ff;
+    --sky2:#f7fcff;
+    --ice1:#eafaff;
+    --ice2:#bfe8f7;
+    --ice-line:#9bd1e5;
+    --ink:#17324d;
+    --panel:rgba(255,255,255,.88);
+    --accent:#1565c0;
+    --accent2:#0d47a1;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+    background: linear-gradient(var(--sky1), var(--sky2));
+    color: var(--ink);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .app {
+    width: min(1200px, 100%);
+    margin: 0 auto;
+    padding: 18px 18px 24px;
+  }
+
+  h1 {
+    margin: 0 0 6px;
+    text-align: center;
+    font-size: clamp(26px, 4vw, 42px);
+  }
+
+  .subtitle {
+    text-align: center;
+    margin: 0 auto 14px;
+    max-width: 850px;
+    font-size: clamp(14px, 2vw, 18px);
+  }
+
+  .controls {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  button {
+    appearance: none;
+    border: 0;
+    border-radius: 12px;
+    padding: 12px 20px;
+    font-weight: 700;
+    font-size: 17px;
+    color: white;
+    background: var(--accent);
+    box-shadow: 0 4px 0 var(--accent2);
+    cursor: pointer;
+  }
+
+  button:hover { transform: translateY(-1px); }
+  button:active {
+    transform: translateY(3px);
+    box-shadow: 0 1px 0 var(--accent2);
+  }
+  button:disabled {
+    cursor: not-allowed;
+    opacity: .55;
+    transform: none;
+  }
+
+  .stage-wrap {
+    background: var(--panel);
+    border-radius: 20px;
+    padding: 10px;
+    box-shadow: 0 10px 35px rgba(18,64,92,.14);
+    overflow: hidden;
+  }
+
+  svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    min-height: 460px;
+    border-radius: 14px;
+    background: linear-gradient(#d8f2ff 0%, #f3fbff 58%, #d9f5ff 58%, #bfe6f3 100%);
+  }
+
+  .note {
+    text-align: center;
+    margin: 10px 0 0;
+    font-size: 14px;
+    opacity: .82;
+  }
+
+  .speed-label {
+    font-weight: 700;
+    font-size: 16px;
+    fill: #102a43;
+    paint-order: stroke;
+    stroke: white;
+    stroke-width: 5px;
+    stroke-linejoin: round;
+  }
+
+  .name-label {
+    font-size: 12px;
+    fill: #29445b;
+    opacity: .9;
+  }
+
+  .distance-line {
+    stroke: rgba(23,50,77,.22);
+    stroke-width: 2;
+    stroke-dasharray: 6 6;
+  }
+
+  .center-mark {
+    stroke: rgba(8,73,120,.4);
+    stroke-width: 2;
+    stroke-dasharray: 5 7;
+  }
+
+  .ice-scratch {
+    stroke: rgba(255,255,255,.72);
+    stroke-width: 2;
+    fill: none;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>Skater Expansion Model</h1>
+  <p class="subtitle">
+    Push the skaters apart. Add more skaters and notice that skaters farther from the center move faster.
+  </p>
+
+  <div class="controls">
+    <button id="pushBtn">Push Off</button>
+    <button id="addBtn">Add Skaters</button>
+    <button id="resetBtn">Reset</button>
+  </div>
+
+  <div class="stage-wrap">
+    <svg id="scene" viewBox="0 0 1200 560" role="img" aria-label="Skaters on an icy lake demonstrating expansion">
+      <defs>
+        <linearGradient id="iceGlow" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#eafaff"/>
+          <stop offset="100%" stop-color="#b8e4f2"/>
+        </linearGradient>
+        <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+          <feDropShadow dx="0" dy="3" stdDeviation="3" flood-opacity=".16"/>
+        </filter>
+      </defs>
+
+      <!-- background -->
+      <rect x="0" y="325" width="1200" height="235" fill="url(#iceGlow)"/>
+      <path d="M0 332 C170 315 310 343 480 327 S840 313 1200 334" fill="none" stroke="#8fcde3" stroke-width="3"/>
+      <path class="ice-scratch" d="M70 425 Q240 392 420 425 T790 424 T1120 421"/>
+      <path class="ice-scratch" d="M180 505 Q380 472 600 504 T1040 500"/>
+
+      <line id="centerLine" class="center-mark" x1="600" x2="600" y1="85" y2="520"/>
+      <text x="600" y="540" text-anchor="middle" font-size="14" fill="#376a86">CENTER</text>
+
+      <g id="legendLayer">
+        <g transform="translate(18 18)">
+          <rect x="0" y="0" width="320" height="118" rx="14" fill="rgba(255,255,255,0.9)" stroke="#8fcde3" stroke-width="2"/>
+
+          <text x="48" y="50" class="speed-label" text-anchor="middle">1.8 m/s</text>
+          <circle cx="48" cy="72" r="10" fill="#f2c6a0" stroke="#263238" stroke-width="1.5"/>
+          <rect x="36" y="82" width="24" height="18" rx="8" fill="#42a5f5" stroke="#263238" stroke-width="1.5"/>
+
+          <text x="100" y="44" font-size="17" font-weight="700" fill="#17324d">
+            <tspan x="100" dy="0">Number above head =</tspan>
+            <tspan x="100" dy="21">skater speed in Meters</tspan>
+            <tspan x="100" dy="21">per Second (m/s)</tspan>
+          </text>
+        </g>
+      </g>
+      <g id="distanceLayer"></g>
+      <g id="skatersLayer"></g>
+    </svg>
+  </div>
+
+  <p class="note">
+    The displayed speed is relative. Each skater's speed is proportional to how far they are from the center.
+  </p>
+</div>
+
+<script>
+(() => {
+  const SVG_NS = "http://www.w3.org/2000/svg";
+  const scene = document.getElementById("scene");
+  const skatersLayer = document.getElementById("skatersLayer");
+  const distanceLayer = document.getElementById("distanceLayer");
+  const pushBtn = document.getElementById("pushBtn");
+  const addBtn = document.getElementById("addBtn");
+  const resetBtn = document.getElementById("resetBtn");
+
+  const CENTER = 600;
+  const ICE_Y = 413;
+  const START_GAP = 108;
+  const GROUP_SPACING = 92;
+  const MAX_PER_SIDE = 5;
+
+  let perSide = 1;
+  let skaters = [];
+  let animationFrame = null;
+  let running = false;
+  let expanded = false;
+
+  function svgEl(tag, attrs = {}) {
+    const el = document.createElementNS(SVG_NS, tag);
+    for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+    return el;
+  }
+
+  function makeSkater(id, side, index, x) {
+    // side: -1 left, +1 right
+    const g = svgEl("g", { class: "skater", "data-id": id });
+    g.style.transformBox = "fill-box";
+    g.style.transformOrigin = "center bottom";
+
+    const speed = svgEl("text", {
+      class: "speed-label",
+      x: 0,
+      y: -178,
+      "text-anchor": "middle"
+    });
+    speed.textContent = "0.0";
+
+
+    // shadow
+    g.appendChild(svgEl("ellipse", {
+      cx: 0, cy: 8, rx: 28, ry: 6,
+      fill: "rgba(44,78,94,.15)"
+    }));
+
+    // skate / legs
+    const leg1 = svgEl("line", { x1: -9, y1: -52, x2: -13, y2: -7, stroke: "#263238", "stroke-width": 10, "stroke-linecap": "round" });
+    const leg2 = svgEl("line", { x1: 9, y1: -52, x2: 13, y2: -7, stroke: "#263238", "stroke-width": 10, "stroke-linecap": "round" });
+    g.appendChild(leg1); g.appendChild(leg2);
+
+    g.appendChild(svgEl("line", { x1: -22, y1: -1, x2: -3, y2: -1, stroke: "#4f6673", "stroke-width": 5, "stroke-linecap": "round" }));
+    g.appendChild(svgEl("line", { x1: 3, y1: -1, x2: 22, y2: -1, stroke: "#4f6673", "stroke-width": 5, "stroke-linecap": "round" }));
+    g.appendChild(svgEl("line", { x1: -20, y1: 3, x2: -4, y2: 3, stroke: "#d6f3ff", "stroke-width": 2 }));
+    g.appendChild(svgEl("line", { x1: 5, y1: 3, x2: 21, y2: 3, stroke: "#d6f3ff", "stroke-width": 2 }));
+
+    // torso
+    const jacketColors = ["#ef5350","#42a5f5","#66bb6a","#ab47bc","#ffa726","#26a69a","#ec407a","#7e57c2","#5c6bc0","#8d6e63"];
+    const jacket = jacketColors[(id - 1) % jacketColors.length];
+    g.appendChild(svgEl("rect", {
+      x: -25, y: -112, width: 50, height: 66, rx: 18,
+      fill: jacket, stroke: "#263238", "stroke-width": 2,
+      filter: "url(#shadow)"
+    }));
+
+    // head
+    g.appendChild(svgEl("circle", {
+      cx: 0, cy: -132, r: 22,
+      fill: "#f2c6a0", stroke: "#263238", "stroke-width": 2
+    }));
+    // hat
+    g.appendChild(svgEl("path", {
+      d: "M-21 -137 Q0 -163 21 -137 L18 -151 Q0 -169 -18 -151 Z",
+      fill: jacket
+    }));
+    g.appendChild(svgEl("circle", { cx: 0, cy: -159, r: 6, fill: jacket }));
+
+    // face orientation
+    const faceX = side === -1 ? 7 : -7;
+    g.appendChild(svgEl("circle", { cx: faceX, cy: -134, r: 2.2, fill: "#243746" }));
+    g.appendChild(svgEl("path", {
+      d: side === -1 ? "M5 -124 q7 5 12 0" : "M-17 -124 q7 5 12 0",
+      fill: "none", stroke: "#7a3f37", "stroke-width": 2, "stroke-linecap": "round"
+    }));
+
+    // Arms.
+    // Inner skaters extend hands toward center, outer skaters push the back of the skater in front.
+    const dir = side === -1 ? 1 : -1;
+    const shoulderX = 20 * dir;
+
+    const frontUpperArm = svgEl("line", {
+      x1: shoulderX, y1: -98, x2: shoulderX, y2: -98,
+      stroke: jacket, "stroke-width": 12, "stroke-linecap": "round"
+    });
+    const frontLowerArm = svgEl("line", {
+      x1: shoulderX, y1: -98, x2: shoulderX, y2: -98,
+      stroke: jacket, "stroke-width": 12, "stroke-linecap": "round"
+    });
+    const frontHand = svgEl("circle", {
+      cx: shoulderX, cy: -98, r: 7,
+      fill: "#f2c6a0", stroke: "#263238", "stroke-width": 1.5
+    });
+
+    g.appendChild(frontUpperArm);
+    g.appendChild(frontLowerArm);
+    g.appendChild(frontHand);
+
+    // Rear arm slightly visible
+    g.appendChild(svgEl("line", {
+      x1: -shoulderX * .72, y1: -95, x2: -shoulderX * .92, y2: -72,
+      stroke: jacket, "stroke-width": 10, "stroke-linecap": "round", opacity: ".9"
+    }));
+
+    g.appendChild(speed);
+
+    skatersLayer.appendChild(g);
+
+    return { id, side, index, x, baseX: x, g, speed, currentSpeed: 0, frontUpperArm, frontLowerArm, frontHand };
+  }
+
+  function buildScene() {
+    cancelAnimationFrame(animationFrame);
+    running = false;
+    expanded = false;
+    pushBtn.textContent = "Push Off";
+    pushBtn.disabled = false;
+    addBtn.disabled = perSide >= MAX_PER_SIDE;
+    skatersLayer.innerHTML = "";
+    distanceLayer.innerHTML = "";
+    skaters = [];
+
+    let id = 1;
+
+    for (let i = perSide - 1; i >= 0; i--) {
+      const x = CENTER - START_GAP/2 - i * GROUP_SPACING;
+      skaters.push(makeSkater(id++, -1, i, x));
+    }
+    for (let i = 0; i < perSide; i++) {
+      const x = CENTER + START_GAP/2 + i * GROUP_SPACING;
+      skaters.push(makeSkater(id++, 1, i, x));
+    }
+
+    skaters.forEach(s => setArmPose(s, 0));
+    positionSkaters();
+    drawDistanceGuides();
+  }
+
+  function positionSkaters() {
+    skaters.forEach(s => {
+      s.g.setAttribute("transform", `translate(${s.x} ${ICE_Y})`);
+      const suffix = (expanded && !running) ? " Max" : "";
+      s.speed.textContent = `${s.currentSpeed.toFixed(1)} m/s${suffix}`;
+    });
+  }
+
+  function speedFor(s) {
+    // Relative velocity: proportional to distance from center.
+    return Math.abs(s.x - CENTER) / 42;
+  }
+
+  function setArmPose(s, extendProgress) {
+    // 0 = bent arm, 1 = extended push-off arm
+    const dir = s.side === -1 ? 1 : -1;
+    const shoulderX = 20 * dir;
+
+    const bentElbowX = 39 * dir;
+    const bentElbowY = -74;
+    const bentHandX = 54 * dir;
+    const bentHandY = -96;
+
+    const extendedElbowX = 46 * dir;
+    const extendedElbowY = -96;
+    const extendedHandX = 74 * dir;
+    const extendedHandY = -96;
+
+    const elbowX = bentElbowX + (extendedElbowX - bentElbowX) * extendProgress;
+    const elbowY = bentElbowY + (extendedElbowY - bentElbowY) * extendProgress;
+    const handX = bentHandX + (extendedHandX - bentHandX) * extendProgress;
+    const handY = bentHandY + (extendedHandY - bentHandY) * extendProgress;
+
+    s.frontUpperArm.setAttribute("x1", shoulderX);
+    s.frontUpperArm.setAttribute("y1", -98);
+    s.frontUpperArm.setAttribute("x2", elbowX);
+    s.frontUpperArm.setAttribute("y2", elbowY);
+
+    s.frontLowerArm.setAttribute("x1", elbowX);
+    s.frontLowerArm.setAttribute("y1", elbowY);
+    s.frontLowerArm.setAttribute("x2", handX);
+    s.frontLowerArm.setAttribute("y2", handY);
+
+    s.frontHand.setAttribute("cx", handX);
+    s.frontHand.setAttribute("cy", handY);
+  }
+
+  function drawDistanceGuides() {
+    distanceLayer.innerHTML = "";
+  }
+
+  function pushOff() {
+    if (running) return;
+
+    // If already expanded, "Rewind" is an immediate reset of positions only.
+    if (expanded) {
+      skaters.forEach(s => {
+        const sideOffset = START_GAP / 2 + s.index * GROUP_SPACING;
+        s.x = CENTER + s.side * sideOffset;
+        s.baseX = s.x;
+        s.currentSpeed = 0;
+        setArmPose(s, 0);
+      });
+
+      expanded = false;
+      pushBtn.textContent = "Push Off";
+      addBtn.disabled = perSide >= MAX_PER_SIDE;
+      positionSkaters();
+      drawDistanceGuides();
+      return;
+    }
+
+    running = true;
+    pushBtn.disabled = true;
+    addBtn.disabled = true;
+
+    const start = performance.now();
+    const duration = 2400;
+    const initial = skaters.map(s => ({ s, x0: s.x }));
+
+    function frame(now) {
+      const t = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - t, 3);
+
+      initial.forEach(({s, x0}) => {
+        const dist = x0 - CENTER;
+        const scale = 1 + 0.95 * eased;
+        s.x = CENTER + dist * scale;
+        s.currentSpeed = speedFor(s);
+        const armProgress = Math.min(1, t / 0.157);
+        const armEase = 1 - Math.pow(1 - armProgress, 3);
+        setArmPose(s, armEase);
+      });
+
+      positionSkaters();
+      drawDistanceGuides();
+
+      if (t < 1) {
+        animationFrame = requestAnimationFrame(frame);
+      } else {
+        running = false;
+        expanded = true;
+        skaters.forEach(s => setArmPose(s, 1));
+        positionSkaters();
+        pushBtn.textContent = "Rewind";
+        pushBtn.disabled = false;
+        addBtn.disabled = true;
+      }
+    }
+
+    animationFrame = requestAnimationFrame(frame);
+  }
+
+  function addSkaters() {
+    if (running || perSide >= MAX_PER_SIDE) return;
+    perSide++;
+    buildScene();
+  }
+
+  function reset() {
+    perSide = 1;
+    buildScene();
+  }
+
+  pushBtn.addEventListener("click", pushOff);
+  addBtn.addEventListener("click", addSkaters);
+  resetBtn.addEventListener("click", reset);
+
+  buildScene();
+})();
+</script>
+</body>
+</html>
