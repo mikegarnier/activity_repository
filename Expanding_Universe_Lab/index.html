@@ -72,13 +72,6 @@
 
 <main>
   <section class="panel">
-    <div class="student">
-      <label for="studentName"><strong>Your name:</strong></label>
-      <input id="studentName" type="text" placeholder="First and last name">
-    </div>
-  </section>
-
-  <section class="panel">
     <h2>Directions</h2>
     <ol>
       <li>Name your galaxies below. The first galaxy sits on the <strong>0</strong> of the ruler and is always the <strong>Milky Way</strong>.</li>
@@ -95,7 +88,7 @@
     <div class="names" id="names"></div>
     <div class="controls">
       <button id="lockBtn">Lock in names</button>
-      <span class="hint" id="lockHint">You can still change the names until you lock them in.</span>
+      <span class="hint" id="lockHint">You can't start the stretch until you've locked in the names.</span>
     </div>
   </section>
 
@@ -105,7 +98,7 @@
     <div class="bench-wrap"><svg id="bench"></svg></div>
     <div class="controls">
       <button class="stretch" id="stretchBtn" disabled>Stretch</button>
-      <button class="secondary" id="resetBtn">Start over</button>
+      <button class="secondary" id="resetBtn" disabled>Unstretch</button>
       <span class="status" id="status">Lock in your galaxy names to begin.</span>
     </div>
     <div class="toast" id="toast">⏱ The stretch took 2 seconds. Write this down — you need it to calculate velocity!</div>
@@ -331,16 +324,40 @@
     requestAnimationFrame(frame);
   }
 
+  function unstretch() {
+    if (!stretched) return;
+    resetBtn.disabled = true;
+    stretchBtn.disabled = true;
+    statusEl.textContent = 'Returning the string to its starting length…';
+    const t0 = performance.now();
+    const from = currentScale;
+    function frame(t) {
+      const f = Math.min(1, (t - t0) / 800);
+      currentScale = from + (1 - from) * f;
+      draw();
+      if (f < 1) {
+        requestAnimationFrame(frame);
+      } else {
+        currentScale = 1;
+        stretched = false;
+        stretchBtn.disabled = false;
+        statusEl.textContent = 'String is back to its starting length. Click Stretch when you are ready.';
+        draw();
+      }
+    }
+    requestAnimationFrame(frame);
+  }
+
   function reset() {
-    if (locked && !confirm('Start over with a new string? Your names and data will be cleared.')) return;
     locked = false; stretched = false;
     names = [];
     newString();
     buildNameInputs();
     dataBody.innerHTML = '<tr><td colspan="3" class="hint">Lock in your galaxy names to fill in this table.</td></tr>';
     lockBtn.disabled = false;
-    document.getElementById('lockHint').textContent = 'You can still change the names until you lock them in.';
+    document.getElementById('lockHint').textContent = "You can't start the stretch until you've locked in the names.";
     stretchBtn.disabled = true;
+    resetBtn.disabled = true;
     statusEl.textContent = 'Lock in your galaxy names to begin.';
     toast.classList.remove('show');
     draw();
@@ -348,7 +365,7 @@
 
   lockBtn.addEventListener('click', lockNames);
   stretchBtn.addEventListener('click', stretch);
-  resetBtn.addEventListener('click', reset);
+  resetBtn.addEventListener('click', unstretch);
 
   reset();
 })();
