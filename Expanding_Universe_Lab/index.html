@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Expanding Universe Lab</title>
+<style>
+  :root {
+    --bg: #0f1630; --panel: #ffffff; --ink: #1d2433; --muted: #5b6475;
+    --accent: #3b5bdb; --accent2: #e8590c; --string: #f08c00; --line: #d5dae3;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg); color: var(--ink); line-height: 1.45;
+  }
+  header { color: #fff; padding: 22px 16px 10px; max-width: 1100px; margin: 0 auto; }
+  header h1 { margin: 0 0 4px; font-size: 1.7rem; }
+  header p { margin: 0; color: #b9c3e6; }
+  main { max-width: 1100px; margin: 0 auto; padding: 8px 16px 40px; }
+  .panel { background: var(--panel); border-radius: 12px; padding: 18px 20px; margin: 14px 0; }
+  .panel h2 { margin: 0 0 10px; font-size: 1.2rem; color: var(--accent); }
+  ol, ul { margin: 6px 0; padding-left: 22px; }
+  li { margin: 3px 0; }
+  .names { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-top: 8px; }
+  .names label { font-size: .85rem; color: var(--muted); display: block; }
+  .names input { width: 100%; padding: 7px 9px; font-size: 1rem; border: 1px solid var(--line); border-radius: 6px; }
+  .names input:disabled { background: #eef1f6; color: var(--ink); }
+  .bench-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: #fbf7ef; }
+  svg { display: block; }
+  .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 12px; }
+  button {
+    font-size: 1rem; padding: 10px 18px; border-radius: 8px; border: 0; cursor: pointer;
+    background: var(--accent); color: #fff; font-weight: 600;
+  }
+  button.secondary { background: #e9ecf3; color: var(--ink); }
+  button.stretch { background: var(--accent2); font-size: 1.1rem; padding: 12px 26px; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  .status { font-weight: 600; color: var(--muted); }
+  .toast {
+    display: none; margin-top: 12px; padding: 12px 16px; border-radius: 8px;
+    background: #fff3bf; border: 2px solid #f59f00; font-size: 1.1rem; font-weight: 700;
+  }
+  .toast.show { display: block; }
+  table { border-collapse: collapse; width: 100%; margin-top: 6px; }
+  th, td { border: 1px solid var(--line); padding: 8px; text-align: center; }
+  th { background: #edf2ff; font-size: .95rem; }
+  td input { width: 100%; max-width: 140px; padding: 6px; font-size: 1rem; border: 1px solid var(--line); border-radius: 5px; text-align: center; }
+  td.name { font-weight: 600; text-align: left; }
+  .formula {
+    background: #f4f6fb; border-left: 4px solid var(--accent); padding: 10px 14px; margin: 10px 0;
+    border-radius: 0 8px 8px 0;
+  }
+  .formula code { font-size: 1.05rem; font-weight: 700; color: var(--ink); background: none; }
+  .hint { color: var(--muted); font-size: .92rem; }
+  .student { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .student input { padding: 7px 9px; font-size: 1rem; border: 1px solid var(--line); border-radius: 6px; min-width: 220px; }
+  @media print {
+    body { background: #fff; }
+    header { color: #000; } header p { color: #333; }
+    .controls, .no-print { display: none !important; }
+    .panel { padding: 8px 0; margin: 6px 0; }
+    .bench-wrap { overflow: visible; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Expanding Universe Lab — Make-Up Activity</h1>
+  <p>Model the expanding universe with a stretchy string. The dots on the string are galaxies.</p>
+</header>
+
+<main>
+  <section class="panel">
+    <div class="student">
+      <label for="studentName"><strong>Your name:</strong></label>
+      <input id="studentName" type="text" placeholder="First and last name">
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Directions</h2>
+    <ol>
+      <li>Name your galaxies below. The first galaxy sits on the <strong>0</strong> of the ruler and is always the <strong>Milky Way</strong>.</li>
+      <li>Click <strong>Lock in names</strong>. The names will appear on the string.</li>
+      <li>Read the ruler and measure the distance from the Milky Way to each galaxy (the center of each dot). Record it in the <strong>Distance Before Stretch</strong> column. Measure to the nearest 0.1 cm.</li>
+      <li>Click <strong>Stretch</strong>. Pay attention to how long the stretch takes!</li>
+      <li>Measure again and record each distance in the <strong>Distance After Stretch</strong> column.</li>
+      <li>Copy your measurements onto your lab paper, then calculate the change in distance and the velocity of each galaxy (see the instructions at the bottom).</li>
+    </ol>
+  </section>
+
+  <section class="panel">
+    <h2>1. Name your galaxies</h2>
+    <div class="names" id="names"></div>
+    <div class="controls">
+      <button id="lockBtn">Lock in names</button>
+      <span class="hint" id="lockHint">You can still change the names until you lock them in.</span>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>2. The string and ruler</h2>
+    <p class="hint">Scroll sideways if the ruler doesn't fit on your screen. Each small tick is 1 mm (0.1 cm).</p>
+    <div class="bench-wrap"><svg id="bench"></svg></div>
+    <div class="controls">
+      <button class="stretch" id="stretchBtn" disabled>Stretch</button>
+      <button class="secondary" id="resetBtn">Start over</button>
+      <span class="status" id="status">Lock in your galaxy names to begin.</span>
+    </div>
+    <div class="toast" id="toast">⏱ The stretch took 2 seconds. Write this down — you need it to calculate velocity!</div>
+  </section>
+
+  <section class="panel">
+    <h2>3. Data table</h2>
+    <table>
+      <thead>
+        <tr><th>Galaxy</th><th>Distance Before Stretch (cm)</th><th>Distance After Stretch (cm)</th></tr>
+      </thead>
+      <tbody id="dataBody"></tbody>
+    </table>
+    <div class="controls no-print">
+      <button class="secondary" onclick="window.print()">Print / Save as PDF</button>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>4. Calculations (do these on your lab paper)</h2>
+    <p><strong>Change in distance</strong> — how far each galaxy moved away from the Milky Way during the stretch:</p>
+    <div class="formula"><code>Change in distance = Distance after stretch − Distance before stretch</code></div>
+    <p class="hint">Example: a galaxy at 4.0 cm before and 6.5 cm after has a change in distance of 6.5 − 4.0 = 2.5 cm.</p>
+
+    <p><strong>Velocity</strong> — how fast each galaxy moved away from the Milky Way:</p>
+    <div class="formula"><code>Velocity = Change in distance ÷ Time of the stretch</code></div>
+    <p class="hint">The stretch took <strong>2 seconds</strong>. Example: 2.5 cm ÷ 2 s = 1.25 cm/s. Your velocity units are <strong>cm/s</strong>.</p>
+
+    <p><strong>Think about it:</strong> Look at your results. How does a galaxy's starting distance from the Milky Way relate to its velocity?</p>
+  </section>
+</main>
+
+<script>
+(function () {
+  const NUM_OTHERS = 4;          // galaxies besides the Milky Way
+  const RULER_CM = 30;
+  const PX_PER_CM = 40;
+  const MARGIN = 30;
+  const STRETCH_MS = 2000;
+
+  const svg = document.getElementById('bench');
+  const namesDiv = document.getElementById('names');
+  const dataBody = document.getElementById('dataBody');
+  const lockBtn = document.getElementById('lockBtn');
+  const stretchBtn = document.getElementById('stretchBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const statusEl = document.getElementById('status');
+  const toast = document.getElementById('toast');
+
+  let basePositions = [];   // cm, before stretch
+  let stretchFactor = 1.6;
+  let currentScale = 1;
+  let names = [];
+  let locked = false;
+  let stretched = false;
+
+  const W = RULER_CM * PX_PER_CM + MARGIN * 2;
+  const H = 210;
+  svg.setAttribute('width', W);
+  svg.setAttribute('height', H);
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+
+  const x = cm => MARGIN + cm * PX_PER_CM;
+  const NS = 'http://www.w3.org/2000/svg';
+  function el(tag, attrs, text) {
+    const e = document.createElementNS(NS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+
+  function newString() {
+    // Random spacing so each make-up attempt is a little different.
+    basePositions = [0];
+    let p = 0;
+    for (let i = 0; i < NUM_OTHERS; i++) {
+      p += 2.4 + Math.round(Math.random() * 16) / 10; // 2.4 – 4.0 cm gaps
+      basePositions.push(Math.round(p * 10) / 10);
+    }
+    // Pick a stretch factor that keeps everything on the ruler.
+    const last = basePositions[basePositions.length - 1];
+    const maxFactor = (RULER_CM - 1.5) / last;
+    stretchFactor = Math.min(maxFactor, 1.5 + Math.round(Math.random() * 3) / 10); // ~1.5–1.8
+    currentScale = 1;
+  }
+
+  function buildNameInputs() {
+    namesDiv.innerHTML = '';
+    for (let i = 0; i <= NUM_OTHERS; i++) {
+      const wrap = document.createElement('div');
+      const lab = document.createElement('label');
+      const inp = document.createElement('input');
+      inp.id = 'gname' + i;
+      if (i === 0) {
+        lab.textContent = 'Galaxy 1 (on the 0 mark)';
+        inp.value = 'Milky Way';
+        inp.disabled = true;
+      } else {
+        lab.textContent = 'Galaxy ' + (i + 1);
+        inp.placeholder = 'Name galaxy ' + (i + 1);
+        inp.maxLength = 18;
+      }
+      lab.setAttribute('for', inp.id);
+      wrap.appendChild(lab); wrap.appendChild(inp);
+      namesDiv.appendChild(wrap);
+    }
+  }
+
+  function currentNames() {
+    const out = [];
+    for (let i = 0; i <= NUM_OTHERS; i++) {
+      const v = document.getElementById('gname' + i).value.trim();
+      out.push(v || ('Galaxy ' + (i + 1)));
+    }
+    out[0] = 'Milky Way';
+    return out;
+  }
+
+  function buildTable() {
+    dataBody.innerHTML = '';
+    names.forEach((n, i) => {
+      const tr = document.createElement('tr');
+      const tdN = document.createElement('td'); tdN.className = 'name'; tdN.textContent = n;
+      tr.appendChild(tdN);
+      ['before', 'after'].forEach(kind => {
+        const td = document.createElement('td');
+        if (i === 0) {
+          td.textContent = '0.0';
+        } else {
+          const inp = document.createElement('input');
+          inp.type = 'number'; inp.step = '0.1'; inp.min = '0';
+          inp.setAttribute('aria-label', `${n} distance ${kind} stretch (cm)`);
+          td.appendChild(inp);
+        }
+        tr.appendChild(td);
+      });
+      dataBody.appendChild(tr);
+    });
+  }
+
+  function draw() {
+    svg.innerHTML = '';
+    // Bench background
+    svg.appendChild(el('rect', { x: 0, y: 0, width: W, height: H, fill: '#fbf7ef' }));
+
+    // Ruler
+    const rulerTop = 120, rulerH = 70;
+    svg.appendChild(el('rect', { x: x(0) - 14, y: rulerTop, width: RULER_CM * PX_PER_CM + 28, height: rulerH,
+      fill: '#ffe8a3', stroke: '#b08900', 'stroke-width': 1.5, rx: 3 }));
+    for (let mm = 0; mm <= RULER_CM * 10; mm++) {
+      const cm = mm / 10;
+      let len = 10;
+      if (mm % 10 === 0) len = 26; else if (mm % 5 === 0) len = 17;
+      svg.appendChild(el('line', { x1: x(cm), y1: rulerTop, x2: x(cm), y2: rulerTop + len,
+        stroke: '#3d2e00', 'stroke-width': mm % 10 === 0 ? 1.5 : 1 }));
+      if (mm % 10 === 0) {
+        svg.appendChild(el('text', { x: x(cm), y: rulerTop + 44, 'text-anchor': 'middle',
+          'font-size': 15, 'font-family': 'system-ui, sans-serif', fill: '#3d2e00' }, String(cm)));
+      }
+    }
+    svg.appendChild(el('text', { x: x(RULER_CM) - 4, y: rulerTop + 63, 'text-anchor': 'end',
+      'font-size': 12, 'font-family': 'system-ui, sans-serif', fill: '#3d2e00' }, 'cm'));
+
+    // String (stretchy band) — extends a little past both end galaxies
+    const pos = basePositions.map(p => p * currentScale);
+    const last = pos[pos.length - 1];
+    const stringY = 96;
+    const startCm = -0.3;
+    const endCm = last + 0.8 * currentScale;
+    const thickness = 10 / Math.sqrt(currentScale); // gets a bit thinner as it stretches
+    svg.appendChild(el('rect', { x: x(startCm), y: stringY - thickness / 2, width: (endCm - startCm) * PX_PER_CM,
+      height: thickness, rx: thickness / 2, fill: '#f08c00', stroke: '#c56a00', 'stroke-width': 1 }));
+
+    // Galaxies
+    pos.forEach((p, i) => {
+      const gx = x(p);
+      svg.appendChild(el('circle', { cx: gx, cy: stringY, r: 5.5, fill: i === 0 ? '#1c3faa' : '#212529',
+        stroke: '#fff', 'stroke-width': 1.5 }));
+      // Thin guide line from dot center down to the ruler edge to help reading
+      svg.appendChild(el('line', { x1: gx, y1: stringY + 6, x2: gx, y2: rulerTop,
+        stroke: '#868e96', 'stroke-width': 0.8, 'stroke-dasharray': '3 3' }));
+      const label = names[i] || (i === 0 ? 'Milky Way' : 'Galaxy ' + (i + 1));
+      const ly = i % 2 === 0 ? 40 : 64; // stagger labels so they don't overlap
+      svg.appendChild(el('line', { x1: gx, y1: ly + 4, x2: gx, y2: stringY - 7, stroke: '#adb5bd', 'stroke-width': 1 }));
+      svg.appendChild(el('text', { x: gx, y: ly, 'text-anchor': i === 0 ? 'start' : 'middle',
+        'font-size': 14, 'font-weight': 600, 'font-family': 'system-ui, sans-serif',
+        fill: i === 0 ? '#1c3faa' : '#212529' }, label));
+    });
+  }
+
+  function lockNames() {
+    names = currentNames();
+    locked = true;
+    for (let i = 1; i <= NUM_OTHERS; i++) document.getElementById('gname' + i).disabled = true;
+    lockBtn.disabled = true;
+    document.getElementById('lockHint').textContent = 'Names locked. Measure each galaxy, then click Stretch.';
+    stretchBtn.disabled = false;
+    statusEl.textContent = 'Measure the distances BEFORE the stretch, then click Stretch.';
+    buildTable();
+    draw();
+  }
+
+  function stretch() {
+    if (stretched) return;
+    stretchBtn.disabled = true;
+    resetBtn.disabled = true;
+    statusEl.textContent = 'Stretching…';
+    toast.classList.remove('show');
+    const t0 = performance.now();
+    function frame(t) {
+      const f = Math.min(1, (t - t0) / STRETCH_MS);
+      currentScale = 1 + (stretchFactor - 1) * f; // steady (constant-rate) stretch
+      draw();
+      if (f < 1) {
+        requestAnimationFrame(frame);
+      } else {
+        stretched = true;
+        resetBtn.disabled = false;
+        statusEl.textContent = 'Stretch complete. Measure the distances AFTER the stretch.';
+        toast.classList.add('show');
+      }
+    }
+    requestAnimationFrame(frame);
+  }
+
+  function reset() {
+    if (locked && !confirm('Start over with a new string? Your names and data will be cleared.')) return;
+    locked = false; stretched = false;
+    names = [];
+    newString();
+    buildNameInputs();
+    dataBody.innerHTML = '<tr><td colspan="3" class="hint">Lock in your galaxy names to fill in this table.</td></tr>';
+    lockBtn.disabled = false;
+    document.getElementById('lockHint').textContent = 'You can still change the names until you lock them in.';
+    stretchBtn.disabled = true;
+    statusEl.textContent = 'Lock in your galaxy names to begin.';
+    toast.classList.remove('show');
+    draw();
+  }
+
+  lockBtn.addEventListener('click', lockNames);
+  stretchBtn.addEventListener('click', stretch);
+  resetBtn.addEventListener('click', reset);
+
+  reset();
+})();
+</script>
+</body>
+</html>
